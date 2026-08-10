@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CampWeekController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -84,5 +85,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/tesisler', [FacilityController::class, 'index'])->name('facilities.index');
         Route::post('/tesisler', [FacilityController::class, 'store'])->name('facilities.store');
         Route::put('/tesisler/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
+
+        Route::get('/kamp-haftalari', [CampWeekController::class, 'index'])->name('camp-weeks.index');
+        Route::put('/kamp-haftalari', [CampWeekController::class, 'update'])->name('camp-weeks.update');
     });
 });

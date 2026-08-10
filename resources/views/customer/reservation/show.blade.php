@@ -29,7 +29,7 @@
 
             <div class="divide-y divide-slate-100/80">
                 <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-slate-500">Tarih aralığı</span><span class="font-medium text-navy-900">{{ $reservation->check_in->translatedFormat('d M Y') }} — {{ $reservation->check_out->translatedFormat('d M Y') }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-slate-500">Konaklama</span><span class="font-medium text-navy-900">{{ $reservation->nights() }} gece</span></div>
+                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-slate-500">Kamp süresi</span><span class="font-medium text-navy-900">{{ $reservation->nights() }} gece (1 hafta)</span></div>
                 <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-slate-500">Kişi sayısı</span><span class="font-medium text-navy-900">{{ $reservation->guests }}</span></div>
                 <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-slate-500">Müşteri sınıfı</span><span class="font-medium text-navy-900">{{ $reservation->customerClass->name }}</span></div>
                 @if ($reservation->note)

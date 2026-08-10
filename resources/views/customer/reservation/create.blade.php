@@ -7,12 +7,11 @@
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
                 Panelime dön
             </a>
-            <p class="section-label mt-4">Yeni talep</p>
+            <p class="section-label mt-4">Haftalık kamp</p>
             <h1 class="page-title mt-1">Rezervasyon oluştur</h1>
-            <p class="page-subtitle">Tarih, tesis ve bilgilerinizi adım adım tamamlayın.</p>
+            <p class="page-subtitle">Kamplar 1 haftalıktır: Pazartesi giriş, sonraki Pazartesi çıkış.</p>
         </div>
 
-        <!-- Stepper -->
         <div class="mb-8">
             <ol class="flex items-center gap-2">
                 <template x-for="(label, idx) in stepLabels" :key="idx">
@@ -54,28 +53,53 @@
 
             <div class="surface p-6 sm:p-8">
 
-                <!-- Adım 1 -->
+                <!-- Adım 1: Kamp haftası -->
                 <div x-show="step === 1" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
-                    <h2 class="font-display text-xl font-semibold text-navy-900">Konaklama tarihleri</h2>
-                    <p class="mt-1 text-sm text-slate-500">Giriş ve çıkış tarihlerinizi seçin.</p>
-                    <div class="mt-6 grid gap-5 sm:grid-cols-2">
-                        <div>
-                            <label class="field-label">Giriş tarihi</label>
-                            <input type="date" x-model="checkIn" :min="today" class="field-input">
-                        </div>
-                        <div>
-                            <label class="field-label">Çıkış tarihi</label>
-                            <input type="date" x-model="checkOut" :min="checkIn || today" class="field-input">
-                        </div>
+                    <h2 class="font-display text-xl font-semibold text-navy-900">Kamp haftası seçin</h2>
+                    <p class="mt-1 text-sm text-slate-500">Herkes aynı hafta içinde Pazartesi gelir, sonraki Pazartesi çıkar.</p>
+
+                    <div class="mt-5 rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-sm text-teal-900">
+                        <span class="font-semibold">Kamp süresi:</span> {{ $campNights }} gece · Haftalık tutar
+                        <span class="font-semibold">₺{{ number_format($customerClass->daily_price * $campNights, 0, ',', '.') }}</span>
+                        <span class="text-teal-700/80">({{ $customerClass->name }})</span>
                     </div>
-                    <p class="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-800 ring-1 ring-teal-100"
-                       x-show="nights > 0" x-cloak x-text="nights + ' gecelik konaklama seçildi'"></p>
+
+                    @if (count($weeks) === 0)
+                        <div class="mt-6 empty-state !py-12">
+                            <p class="font-medium text-slate-500">Şu an seçilebilir açık kamp haftası bulunmuyor.</p>
+                            <p class="text-sm text-slate-400">Lütfen daha sonra tekrar deneyin.</p>
+                        </div>
+                    @else
+                        <div class="mt-5 grid max-h-[28rem] gap-2 overflow-y-auto pr-1">
+                            <template x-for="week in weeks" :key="week.check_in">
+                                <button
+                                    type="button"
+                                    @click="selectWeek(week)"
+                                    class="flex w-full items-center justify-between gap-3 rounded-xl2 border px-4 py-3.5 text-left transition-all"
+                                    :class="checkIn === week.check_in ? 'border-teal-500 bg-teal-50/60 shadow-glow ring-2 ring-teal-500/20' : 'border-slate-200 bg-white hover:border-navy-300'"
+                                >
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-navy-900" x-text="week.label"></p>
+                                        <p class="mt-0.5 text-xs text-slate-500" x-text="'Hafta ' + week.week_no + ' · ' + week.range"></p>
+                                    </div>
+                                    <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+                                         :class="checkIn === week.check_in ? 'bg-navy-900 text-white' : 'bg-sand-100 text-navy-500'">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+                    @endif
                 </div>
 
-                <!-- Adım 2 -->
+                <!-- Adım 2: Tesis -->
                 <div x-show="step === 2" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Tesis seçimi</h2>
-                    <p class="mt-1 text-sm text-slate-500">Uygun sosyal tesisi seçin.</p>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Seçilen kamp haftası:
+                        <span class="font-semibold text-navy-800" x-text="weekLabel"></span>
+                    </p>
+
                     <div class="mt-6 grid gap-3 sm:grid-cols-2">
                         @foreach ($facilities as $f)
                             <button
@@ -102,7 +126,11 @@
                     <div class="mt-6 grid gap-5 sm:grid-cols-2">
                         <div>
                             <label class="field-label">Kişi sayısı</label>
-                            <input type="number" x-model.number="guests" min="1" max="20" class="field-input">
+                            <div class="flex items-center gap-3">
+                                <button type="button" @click="guests = Math.max(1, guests - 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-navy-800 transition hover:bg-sand-50">−</button>
+                                <input type="number" x-model.number="guests" min="1" max="20" class="field-input text-center font-semibold">
+                                <button type="button" @click="guests = Math.min(20, guests + 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-navy-800 transition hover:bg-sand-50">+</button>
+                            </div>
                         </div>
                     </div>
                     <div class="mt-5">
@@ -111,18 +139,18 @@
                     </div>
                 </div>
 
-                <!-- Adım 4: Özet + gönder -->
+                <!-- Adım 4 -->
                 <div x-show="step === 4" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Özet ve gönderim</h2>
-                    <p class="mt-1 text-sm text-slate-500">Bilgilerinizi kontrol edin ve talebinizi gönderin.</p>
+                    <p class="mt-1 text-sm text-slate-500">Kamp bilgilerinizi kontrol edin ve talebinizi gönderin.</p>
 
                     <div class="mt-6 overflow-hidden rounded-xl border border-slate-200/80">
                         <div class="flex justify-between px-4 py-3 text-sm"><span class="text-slate-500">Tesis</span><span class="font-medium text-navy-900" x-text="facilityName"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Tarih aralığı</span><span class="font-medium text-navy-900" x-text="checkIn + ' — ' + checkOut"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Süre</span><span class="font-medium text-navy-900" x-text="nights + ' gece'"></span></div>
+                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Kamp haftası</span><span class="font-medium text-navy-900 text-right" x-text="weekLabel"></span></div>
+                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Süre</span><span class="font-medium text-navy-900">{{ $campNights }} gece (1 hafta)</span></div>
                         <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Kişi</span><span class="font-medium text-navy-900" x-text="guests"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Sınıf</span><span class="font-medium text-navy-900">{{ $customerClass->name }} (₺{{ number_format($customerClass->daily_price, 0, ',', '.') }}/gece)</span></div>
-                        <div class="flex justify-between border-t border-slate-100 bg-sand-50 px-4 py-4"><span class="font-semibold text-navy-900">Toplam tutar</span><span class="font-display text-xl font-semibold text-teal-700" x-text="'₺' + totalPrice.toLocaleString('tr-TR')"></span></div>
+                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Sınıf</span><span class="font-medium text-navy-900">{{ $customerClass->name }}</span></div>
+                        <div class="flex justify-between border-t border-slate-100 bg-sand-50 px-4 py-4"><span class="font-semibold text-navy-900">Haftalık tutar</span><span class="font-display text-xl font-semibold text-teal-700">₺{{ number_format($customerClass->daily_price * $campNights, 0, ',', '.') }}</span></div>
                     </div>
                     <p class="field-hint mt-3">Bu tutar tahmindir. Admin onayının ardından ödeme adımında kesinleşir.</p>
                     <div class="mt-5 alert-soft border-teal-100 bg-teal-50/70 text-teal-900 ring-teal-100">
@@ -136,7 +164,7 @@
                 <button type="button" @click="step--" x-show="step > 1" x-cloak class="btn-secondary">Geri</button>
                 <span x-show="step === 1"></span>
 
-                <button type="button" @click="step++" x-show="step < 4" :disabled="!canProceed" class="btn-primary min-w-[7.5rem]">İleri</button>
+                <button type="button" @click="goNext()" x-show="step < 4" :disabled="!canProceed" class="btn-primary min-w-[7.5rem]">İleri</button>
                 <button type="submit" x-show="step === 4" x-cloak :disabled="submitting" class="btn-accent min-w-[10rem]">
                     <span x-show="!submitting">Talebi Gönder</span>
                     <span x-show="submitting" x-cloak>Gönderiliyor…</span>
@@ -147,31 +175,37 @@
 
     <script>
         function reservationWizard() {
-            const dailyPrice = {{ (float) $customerClass->daily_price }};
+            const weeks = @js($weeks);
+
             return {
                 step: 1,
                 submitting: false,
-                today: new Date().toISOString().split('T')[0],
-                stepLabels: ['Tarih', 'Tesis', 'Bilgiler', 'Özet'],
+                stepLabels: ['Kamp haftası', 'Tesis', 'Bilgiler', 'Özet'],
+                weeks,
                 checkIn: '',
                 checkOut: '',
+                weekLabel: '',
                 facilityId: null,
                 facilityName: '',
                 guests: 1,
                 note: '',
-                get nights() {
-                    if (!this.checkIn || !this.checkOut) return 0;
-                    const d = (new Date(this.checkOut) - new Date(this.checkIn)) / (1000 * 60 * 60 * 24);
-                    return d > 0 ? Math.round(d) : 0;
-                },
-                get totalPrice() {
-                    return this.nights * dailyPrice;
-                },
+
                 get canProceed() {
-                    if (this.step === 1) return this.checkIn && this.checkOut && this.nights > 0;
+                    if (this.step === 1) return !!this.checkIn && !!this.checkOut;
                     if (this.step === 2) return !!this.facilityId;
                     if (this.step === 3) return this.guests >= 1;
                     return true;
+                },
+
+                selectWeek(week) {
+                    this.checkIn = week.check_in;
+                    this.checkOut = week.check_out;
+                    this.weekLabel = week.label;
+                },
+
+                goNext() {
+                    if (!this.canProceed) return;
+                    this.step++;
                 },
             };
         }

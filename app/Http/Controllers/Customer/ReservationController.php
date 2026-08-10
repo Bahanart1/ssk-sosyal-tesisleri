@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\CampWeek;
 use App\Models\Facility;
 use App\Models\Reservation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
     /**
-     * Çok adımlı rezervasyon oluşturma ekranı (tek sayfa, Alpine.js ile adım adım).
+     * Haftalık kamp rezervasyonu oluşturma ekranı.
      */
     public function create()
     {
@@ -23,10 +26,13 @@ class ReservationController extends Controller
         }
 
         $facilities = Facility::active()->orderBy('name')->get();
+        $weeks = CampWeek::upcomingWeeks(12, onlyOpen: true);
 
         return view('customer.reservation.create', [
             'facilities' => $facilities,
             'customerClass' => $user->customerClass,
+            'weeks' => $weeks,
+            'campNights' => Reservation::CAMP_NIGHTS,
         ]);
     }
 
@@ -48,9 +54,28 @@ class ReservationController extends Controller
             return back()->withErrors(['facility_id' => 'Müşteri sınıfınız tanımlı değil.']);
         }
 
-        $checkIn = \Carbon\Carbon::parse($data['check_in']);
-        $checkOut = \Carbon\Carbon::parse($data['check_out']);
-        $nights = max(1, $checkIn->diffInDays($checkOut));
+        $checkIn = Carbon::parse($data['check_in'])->startOfDay();
+        $checkOut = Carbon::parse($data['check_out'])->startOfDay();
+
+        if (! Reservation::isValidCampWeek($checkIn, $checkOut)) {
+            throw ValidationException::withMessages([
+                'check_in' => 'Rezervasyon yalnızca Pazartesi giriş – sonraki Pazartesi çıkış (1 haftalık kamp) olarak yapılabilir.',
+            ]);
+        }
+
+        if ($checkIn->lt(now()->startOfDay())) {
+            throw ValidationException::withMessages([
+                'check_in' => 'Geçmiş bir kamp haftası seçilemez.',
+            ]);
+        }
+
+        if (! CampWeek::isOpen($checkIn)) {
+            throw ValidationException::withMessages([
+                'check_in' => 'Seçtiğiniz kamp haftası yönetici tarafından kapatılmış. Lütfen başka bir hafta seçin.',
+            ]);
+        }
+
+        $nights = Reservation::CAMP_NIGHTS;
 
         $reservation = Reservation::create([
             'user_id' => $user->id,
@@ -65,7 +90,7 @@ class ReservationController extends Controller
         ]);
 
         return redirect()->route('customer.reservations.show', $reservation)
-            ->with('success', 'Rezervasyon talebiniz başarıyla oluşturuldu.');
+            ->with('success', 'Kamp rezervasyon talebiniz başarıyla oluşturuldu.');
     }
 
     public function show(Reservation $reservation)

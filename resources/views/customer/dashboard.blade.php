@@ -10,6 +10,8 @@
                 @if ($user->customerClass)
                     <span class="text-slate-400">·</span>
                     Günlük <span class="font-semibold text-teal-700">₺{{ number_format($user->customerClass->daily_price, 0, ',', '.') }}</span>
+                    <span class="text-slate-400">·</span>
+                    Haftalık kamp <span class="font-semibold text-navy-800">₺{{ number_format($user->customerClass->daily_price * 7, 0, ',', '.') }}</span>
                 @endif
             </p>
         </div>
@@ -41,7 +43,7 @@
                         <span class="text-slate-300">→</span>
                         {{ $highlight->check_out->translatedFormat('d M Y') }}
                     </p>
-                    <p class="text-sm font-medium text-navy-800">{{ $highlight->nights() }} gece · ₺{{ number_format($highlight->total_price, 0, ',', '.') }}</p>
+                    <p class="text-sm font-medium text-navy-800">1 haftalık kamp · {{ $highlight->nights() }} gece · ₺{{ number_format($highlight->total_price, 0, ',', '.') }}</p>
                 </div>
                 <a href="{{ route('customer.reservations.show', $highlight) }}" class="btn-secondary">Detayı Gör</a>
             </div>
@@ -53,7 +55,7 @@
             </div>
             <div>
                 <p class="font-display text-xl font-semibold text-navy-900">Henüz rezervasyonunuz yok</p>
-                <p class="mx-auto mt-1.5 max-w-sm text-sm text-slate-500">Sosyal tesislerimizden birinde yer ayırtmak için yeni bir talep oluşturabilirsiniz.</p>
+            <p class="max-w-sm text-sm text-slate-500">Sosyal tesislerimizde 1 haftalık kamp dönemi ayırtmak için yeni bir talep oluşturabilirsiniz.</p>
             </div>
             <a href="{{ route('customer.reservations.create') }}" class="btn-accent mt-1">Rezervasyon Oluştur</a>
         </section>

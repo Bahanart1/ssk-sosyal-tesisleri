@@ -50,6 +50,26 @@ class Reservation extends Model
         return max(1, $this->check_in->diffInDays($this->check_out));
     }
 
+    /** Haftalık kamp süresi (gece sayısı). */
+    public const CAMP_NIGHTS = 7;
+
+    /**
+     * Verilen Pazartesi başlangıçlı kamp haftasının çıkış günü (sonraki Pazartesi).
+     */
+    public static function campCheckOut(\Carbon\CarbonInterface $checkIn): \Carbon\CarbonInterface
+    {
+        return $checkIn->copy()->startOfDay()->addDays(self::CAMP_NIGHTS);
+    }
+
+    public static function isValidCampWeek(\Carbon\CarbonInterface $checkIn, \Carbon\CarbonInterface $checkOut): bool
+    {
+        $checkIn = $checkIn->copy()->startOfDay();
+        $checkOut = $checkOut->copy()->startOfDay();
+
+        return $checkIn->isMonday()
+            && $checkOut->equalTo(self::campCheckOut($checkIn));
+    }
+
     public static function calculatePrice(CustomerClass $class, int $nights): float
     {
         return round((float) $class->daily_price * $nights, 2);
