@@ -14,6 +14,13 @@
         Kota/doluluk sizin kontrolünüzdedir; haftayı dolduğunda buradan kapatmanız yeterlidir.
     </div>
 
+    @if ($errors->any())
+        <div class="alert-soft mb-6 border-red-200 bg-red-50 text-red-700 ring-red-200">
+            <svg class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+            <p class="font-medium">{{ $errors->first() }}</p>
+        </div>
+    @endif
+
     <div class="surface overflow-hidden">
         <div class="hidden overflow-x-auto lg:block">
             <table class="data-table">
@@ -26,14 +33,14 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-stone-100">
                     @foreach ($weeks as $week)
                         <tr>
                             <td>
                                 <p class="font-semibold text-navy-900">{{ $week['label'] }}</p>
-                                <p class="text-xs text-slate-400">Hafta {{ $week['week_no'] }} · {{ $week['year'] }}</p>
+                                <p class="text-xs text-stone-400">Hafta {{ $week['week_no'] }} · {{ $week['year'] }}</p>
                             </td>
-                            <td class="text-sm text-slate-600">{{ $week['range'] }}</td>
+                            <td class="text-sm text-stone-600">{{ $week['range'] }}</td>
                             <td>
                                 @if ($week['is_open'])
                                     <span class="badge-green">Açık</span>
@@ -41,7 +48,7 @@
                                     <span class="badge-red">Kapalı</span>
                                 @endif
                             </td>
-                            <td class="max-w-[12rem] text-sm text-slate-500">{{ $week['note'] ?: '—' }}</td>
+                            <td class="max-w-[12rem] text-sm text-stone-500">{{ $week['note'] ?: '—' }}</td>
                             <td>
                                 <form method="POST" action="{{ route('admin.camp-weeks.update') }}" class="flex flex-wrap items-center justify-end gap-2">
                                     @csrf
@@ -62,13 +69,13 @@
             </table>
         </div>
 
-        <ul class="divide-y divide-slate-100 lg:hidden">
+        <ul class="divide-y divide-stone-100 lg:hidden">
             @foreach ($weeks as $week)
                 <li class="space-y-3 p-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="font-semibold text-navy-900">{{ $week['label'] }}</p>
-                            <p class="text-xs text-slate-500">{{ $week['range'] }}</p>
+                            <p class="text-xs text-stone-500">{{ $week['range'] }}</p>
                         </div>
                         @if ($week['is_open'])
                             <span class="badge-green">Açık</span>

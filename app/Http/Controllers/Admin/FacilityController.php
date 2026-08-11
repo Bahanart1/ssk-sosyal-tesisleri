@@ -15,14 +15,18 @@ class FacilityController extends Controller
         return view('admin.facilities.index', compact('facilities'));
     }
 
+    protected array $customAttributes = [
+        'name' => 'tesis adı',
+    ];
+
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $data = $request->validateWithBag('create', [
             'name' => ['required', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'capacity' => ['required', 'integer', 'min:1'],
-        ]);
+        ], [], $this->customAttributes);
 
         Facility::create($data);
 
@@ -31,13 +35,13 @@ class FacilityController extends Controller
 
     public function update(Request $request, Facility $facility)
     {
-        $data = $request->validate([
+        $data = $request->validateWithBag('edit-'.$facility->id, [
             'name' => ['required', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'capacity' => ['required', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], [], $this->customAttributes);
 
         $data['is_active'] = $request->boolean('is_active');
         $facility->update($data);

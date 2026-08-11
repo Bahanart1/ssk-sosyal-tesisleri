@@ -5,13 +5,13 @@
 @layer base {
     :root {
         --brand-navy: #0a1728;
-        --brand-teal: #1a9e92;
+        --brand-teal: #e8734a;
         --surface: #ffffff;
-        --canvas: #f3f1ec;
+        --canvas: #fbede0;
         --ink: #0a1728;
-        --muted: #64748b;
-        --radius: 1.125rem;
-        --ring: rgba(26, 158, 146, 0.35);
+        --muted: #7c6a5c;
+        --radius: 1.25rem;
+        --ring: rgba(232, 115, 74, 0.35);
     }
 
     html {
@@ -52,7 +52,7 @@
     }
 
     .surface-solid {
-        @apply rounded-xl2 border border-slate-200/80 bg-white shadow-soft;
+        @apply rounded-xl2 border border-stone-200/80 bg-white shadow-soft;
     }
 
     .surface-hover {
@@ -64,7 +64,7 @@
     }
 
     .page-subtitle {
-        @apply mt-1.5 text-sm leading-relaxed text-slate-500;
+        @apply mt-1.5 text-sm leading-relaxed text-stone-500;
     }
 
     .section-label {
@@ -86,7 +86,7 @@
     }
 
     .btn-secondary {
-        @apply btn border border-slate-200/90 bg-white/80 text-navy-800 hover:border-slate-300 hover:bg-white focus-visible:ring-navy-300;
+        @apply btn border border-stone-200/90 bg-white/80 text-navy-800 hover:border-stone-300 hover:bg-white focus-visible:ring-navy-300;
     }
 
     .btn-danger {
@@ -102,8 +102,8 @@
     }
 
     .field-input {
-        @apply block w-full rounded-xl border-slate-300 bg-white text-sm text-navy-900 shadow-sm
-               placeholder:text-slate-400 focus:border-teal-500 focus:ring-teal-500/30;
+        @apply block w-full rounded-xl border-stone-300 bg-white text-sm text-navy-900 shadow-sm
+               placeholder:text-stone-400 focus:border-teal-500 focus:ring-teal-500/30;
     }
 
     .field-error {
@@ -111,7 +111,7 @@
     }
 
     .field-hint {
-        @apply mt-1.5 text-xs leading-relaxed text-slate-500;
+        @apply mt-1.5 text-xs leading-relaxed text-stone-500;
     }
 
     .badge {
@@ -135,15 +135,15 @@
     }
 
     .badge-gray {
-        @apply badge bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80;
+        @apply badge bg-stone-100 text-stone-600 ring-1 ring-inset ring-stone-200/80;
     }
 
     .data-table {
-        @apply min-w-full divide-y divide-slate-100 text-sm;
+        @apply min-w-full divide-y divide-stone-100 text-sm;
     }
 
     .data-table thead th {
-        @apply bg-sand-50/80 px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+        @apply bg-sand-50/80 px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500;
     }
 
     .data-table tbody td {
@@ -177,7 +177,7 @@
     }
 
     .choice-tile-idle {
-        @apply border-slate-200/90 bg-white/60 hover:border-navy-300 hover:bg-white;
+        @apply border-stone-200/90 bg-white/60 hover:border-navy-300 hover:bg-white;
     }
 
     .alert-soft {
@@ -189,7 +189,7 @@
     }
 
     .back-link {
-        @apply inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-navy-800;
+        @apply inline-flex items-center gap-1.5 text-sm text-stone-500 transition-colors hover:text-navy-800;
     }
 
     .modal-scrim {

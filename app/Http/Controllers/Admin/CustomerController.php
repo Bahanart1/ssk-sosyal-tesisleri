@@ -29,12 +29,15 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $data = $request->validateWithBag('create', [
             'name' => ['required', 'string', 'max:255'],
             'tc_no' => ['required', 'digits:11', 'unique:users,tc_no'],
             'phone' => ['nullable', 'string', 'max:20'],
             'customer_class_id' => ['required', 'exists:customer_classes,id'],
             'password' => ['required', 'string', 'min:6'],
+        ], [
+            'tc_no.unique' => 'Bu TC kimlik numarası zaten kayıtlı.',
+            'tc_no.digits' => 'TC kimlik numarası 11 haneli olmalıdır.',
         ]);
 
         User::create([
@@ -53,7 +56,7 @@ class CustomerController extends Controller
     {
         abort_unless($customer->role === 'customer', 404);
 
-        $data = $request->validate([
+        $data = $request->validateWithBag('edit', [
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
             'customer_class_id' => ['required', 'exists:customer_classes,id'],

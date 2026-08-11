@@ -17,10 +17,12 @@ class PricingController extends Controller
 
     public function update(Request $request, CustomerClass $class)
     {
-        $data = $request->validate([
+        $data = $request->validateWithBag('edit-'.$class->id, [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'daily_price' => ['required', 'numeric', 'min:0'],
+        ], [], [
+            'name' => 'sınıf adı',
         ]);
 
         $class->update($data);

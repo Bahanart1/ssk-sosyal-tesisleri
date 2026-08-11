@@ -20,14 +20,14 @@
                 </div>
                 <div class="leading-tight">
                     <p class="font-display text-base font-semibold tracking-tight text-navy-900">SSK Sosyal Tesisleri</p>
-                    <p class="hidden text-[11px] text-slate-500 sm:block">Müşteri paneli</p>
+                    <p class="hidden text-[11px] text-stone-500 sm:block">Müşteri paneli</p>
                 </div>
             </a>
 
             <div class="flex items-center gap-3 sm:gap-4">
                 <div class="hidden text-right sm:block">
                     <p class="text-sm font-semibold text-navy-900">{{ auth()->user()->name }}</p>
-                    <p class="text-xs text-slate-500">{{ auth()->user()->customerClass?->name ?? 'Sınıf atanmadı' }}</p>
+                    <p class="text-xs text-stone-500">{{ auth()->user()->customerClass?->name ?? 'Sınıf atanmadı' }}</p>
                 </div>
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-50 to-teal-100 text-sm font-bold text-teal-800 ring-1 ring-teal-200/80">
                     {{ mb_substr(auth()->user()->name, 0, 1) }}

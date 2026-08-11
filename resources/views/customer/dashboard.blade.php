@@ -8,9 +8,9 @@
                 Müşteri sınıfınız:
                 <span class="font-semibold text-navy-800">{{ $user->customerClass?->name ?? 'Atanmadı' }}</span>
                 @if ($user->customerClass)
-                    <span class="text-slate-400">·</span>
+                    <span class="text-stone-400">·</span>
                     Günlük <span class="font-semibold text-teal-700">₺{{ number_format($user->customerClass->daily_price, 0, ',', '.') }}</span>
-                    <span class="text-slate-400">·</span>
+                    <span class="text-stone-400">·</span>
                     Haftalık kamp <span class="font-semibold text-navy-800">₺{{ number_format($user->customerClass->daily_price * 7, 0, ',', '.') }}</span>
                 @endif
             </p>
@@ -38,9 +38,9 @@
             </div>
             <div class="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div class="space-y-1">
-                    <p class="text-sm text-slate-500">
+                    <p class="text-sm text-stone-500">
                         {{ $highlight->check_in->translatedFormat('d M Y') }}
-                        <span class="text-slate-300">→</span>
+                        <span class="text-stone-300">→</span>
                         {{ $highlight->check_out->translatedFormat('d M Y') }}
                     </p>
                     <p class="text-sm font-medium text-navy-800">1 haftalık kamp · {{ $highlight->nights() }} gece · ₺{{ number_format($highlight->total_price, 0, ',', '.') }}</p>
@@ -55,30 +55,30 @@
             </div>
             <div>
                 <p class="font-display text-xl font-semibold text-navy-900">Henüz rezervasyonunuz yok</p>
-            <p class="max-w-sm text-sm text-slate-500">Sosyal tesislerimizde 1 haftalık kamp dönemi ayırtmak için yeni bir talep oluşturabilirsiniz.</p>
+            <p class="max-w-sm text-sm text-stone-500">Sosyal tesislerimizde 1 haftalık kamp dönemi ayırtmak için yeni bir talep oluşturabilirsiniz.</p>
             </div>
             <a href="{{ route('customer.reservations.create') }}" class="btn-accent mt-1">Rezervasyon Oluştur</a>
         </section>
     @endif
 
     <section class="surface overflow-hidden">
-        <div class="flex items-center justify-between border-b border-slate-100/80 px-6 py-4">
+        <div class="flex items-center justify-between border-b border-stone-100/80 px-6 py-4">
             <h2 class="font-display text-lg font-semibold text-navy-900">Rezervasyon geçmişi</h2>
-            <span class="text-xs font-medium text-slate-400">{{ $reservations->count() }} kayıt</span>
+            <span class="text-xs font-medium text-stone-400">{{ $reservations->count() }} kayıt</span>
         </div>
 
         @if ($reservations->isEmpty())
-            <p class="px-6 py-12 text-center text-sm text-slate-400">Kayıtlı rezervasyon bulunamadı.</p>
+            <p class="px-6 py-12 text-center text-sm text-stone-400">Kayıtlı rezervasyon bulunamadı.</p>
         @else
-            <ul class="divide-y divide-slate-100/80">
+            <ul class="divide-y divide-stone-100/80">
                 @foreach ($reservations as $r)
                     <li>
                         <a href="{{ route('customer.reservations.show', $r) }}" class="group flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-teal-50/40 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <p class="font-semibold text-navy-900 transition-colors group-hover:text-teal-800">{{ $r->facility->name }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">
+                                <p class="mt-0.5 text-xs text-stone-500">
                                     {{ $r->check_in->translatedFormat('d M Y') }} — {{ $r->check_out->translatedFormat('d M Y') }}
-                                    <span class="text-slate-300">·</span>
+                                    <span class="text-stone-300">·</span>
                                     ₺{{ number_format($r->total_price, 0, ',', '.') }}
                                 </p>
                             </div>

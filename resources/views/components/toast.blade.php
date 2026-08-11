@@ -19,7 +19,7 @@
                     <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                 </div>
                 <p class="pt-1 text-sm font-medium text-navy-800">{{ session('success') }}</p>
-                <button @click="show = false" class="ml-auto rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600" aria-label="Kapat">
+                <button @click="show = false" class="ml-auto rounded-lg p-1 text-stone-400 hover:bg-stone-50 hover:text-stone-600" aria-label="Kapat">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                 </button>
             </div>
@@ -30,7 +30,7 @@
                     <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                 </div>
                 <p class="pt-1 text-sm font-medium text-navy-800">{{ session('error') }}</p>
-                <button @click="show = false" class="ml-auto rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600" aria-label="Kapat">
+                <button @click="show = false" class="ml-auto rounded-lg p-1 text-stone-400 hover:bg-stone-50 hover:text-stone-600" aria-label="Kapat">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                 </button>
             </div>

@@ -18,17 +18,17 @@
         </select>
         <button type="submit" class="btn-secondary">Filtrele</button>
         @if (request('q') || request('status'))
-            <a href="{{ route('admin.reservations.index') }}" class="text-sm font-medium text-slate-500 hover:text-navy-800">Temizle</a>
+            <a href="{{ route('admin.reservations.index') }}" class="text-sm font-medium text-stone-500 hover:text-navy-800">Temizle</a>
         @endif
     </form>
 
     <div class="surface overflow-hidden">
         @if ($reservations->isEmpty())
             <div class="empty-state">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-sand-100 text-slate-400">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-sand-100 text-stone-400">
                     <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
                 </div>
-                <p class="font-medium text-slate-500">Kriterlere uygun rezervasyon bulunamadı.</p>
+                <p class="font-medium text-stone-500">Kriterlere uygun rezervasyon bulunamadı.</p>
             </div>
         @else
             <div class="hidden overflow-x-auto lg:block">
@@ -46,11 +46,11 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-stone-100">
                         @foreach ($reservations as $r)
                             <tr>
                                 <td class="font-semibold">{{ $r->user->name }}</td>
-                                <td class="text-slate-500">{{ $r->user->maskedTcNo() }}</td>
+                                <td class="text-stone-500">{{ $r->user->maskedTcNo() }}</td>
                                 <td>{{ $r->customerClass->name }}</td>
                                 <td>{{ $r->facility->name }}</td>
                                 <td>{{ $r->check_in->format('d.m.Y') }} - {{ $r->check_out->format('d.m.Y') }}</td>
@@ -64,18 +64,18 @@
                 </table>
             </div>
 
-            <ul class="divide-y divide-slate-100 lg:hidden">
+            <ul class="divide-y divide-stone-100 lg:hidden">
                 @foreach ($reservations as $r)
                     <li class="p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="font-semibold text-navy-900">{{ $r->user->name }}</p>
-                                <p class="text-xs text-slate-500">{{ $r->user->maskedTcNo() }} · {{ $r->customerClass->name }}</p>
+                                <p class="text-xs text-stone-500">{{ $r->user->maskedTcNo() }} · {{ $r->customerClass->name }}</p>
                             </div>
                             <x-status-badge :status="$r->status" />
                         </div>
-                        <p class="mt-2 text-sm text-slate-600">{{ $r->facility->name }}</p>
-                        <p class="text-xs text-slate-400">{{ $r->check_in->format('d.m.Y') }} - {{ $r->check_out->format('d.m.Y') }} · ₺{{ number_format($r->total_price, 0, ',', '.') }}</p>
+                        <p class="mt-2 text-sm text-stone-600">{{ $r->facility->name }}</p>
+                        <p class="text-xs text-stone-400">{{ $r->check_in->format('d.m.Y') }} - {{ $r->check_out->format('d.m.Y') }} · ₺{{ number_format($r->total_price, 0, ',', '.') }}</p>
                         <a href="{{ route('admin.reservations.show', $r) }}" class="btn-secondary mt-3 w-full">İncele</a>
                     </li>
                 @endforeach

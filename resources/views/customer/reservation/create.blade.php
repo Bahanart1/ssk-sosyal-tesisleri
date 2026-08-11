@@ -19,7 +19,7 @@
                         <div class="flex min-w-0 flex-1 flex-col items-center gap-2 sm:flex-row sm:items-center">
                             <div
                                 class="stepper-dot"
-                                :class="step > idx + 1 ? 'bg-teal-500 text-white' : (step === idx + 1 ? 'bg-navy-900 text-white shadow-soft scale-105' : 'bg-white text-slate-400 ring-1 ring-slate-200')"
+                                :class="step > idx + 1 ? 'bg-teal-500 text-white' : (step === idx + 1 ? 'bg-navy-900 text-white shadow-soft scale-105' : 'bg-white text-stone-400 ring-1 ring-stone-200')"
                             >
                                 <template x-if="step > idx + 1">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -27,10 +27,10 @@
                                 <span x-show="step <= idx + 1" x-text="idx + 1"></span>
                             </div>
                             <span class="hidden truncate text-xs font-semibold sm:block"
-                                  :class="step === idx + 1 ? 'text-navy-900' : 'text-slate-400'"
+                                  :class="step === idx + 1 ? 'text-navy-900' : 'text-stone-400'"
                                   x-text="label"></span>
                         </div>
-                        <div class="hidden h-px flex-1 rounded bg-slate-200 sm:block" :class="step > idx + 1 ? '!bg-teal-400' : ''" x-show="idx < stepLabels.length - 1"></div>
+                        <div class="hidden h-px flex-1 rounded bg-stone-200 sm:block" :class="step > idx + 1 ? '!bg-teal-400' : ''" x-show="idx < stepLabels.length - 1"></div>
                     </li>
                 </template>
             </ol>
@@ -56,7 +56,7 @@
                 <!-- Adım 1: Kamp haftası -->
                 <div x-show="step === 1" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Kamp haftası seçin</h2>
-                    <p class="mt-1 text-sm text-slate-500">Herkes aynı hafta içinde Pazartesi gelir, sonraki Pazartesi çıkar.</p>
+                    <p class="mt-1 text-sm text-stone-500">Herkes aynı hafta içinde Pazartesi gelir, sonraki Pazartesi çıkar.</p>
 
                     <div class="mt-5 rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-sm text-teal-900">
                         <span class="font-semibold">Kamp süresi:</span> {{ $campNights }} gece · Haftalık tutar
@@ -66,8 +66,8 @@
 
                     @if (count($weeks) === 0)
                         <div class="mt-6 empty-state !py-12">
-                            <p class="font-medium text-slate-500">Şu an seçilebilir açık kamp haftası bulunmuyor.</p>
-                            <p class="text-sm text-slate-400">Lütfen daha sonra tekrar deneyin.</p>
+                            <p class="font-medium text-stone-500">Şu an seçilebilir açık kamp haftası bulunmuyor.</p>
+                            <p class="text-sm text-stone-400">Lütfen daha sonra tekrar deneyin.</p>
                         </div>
                     @else
                         <div class="mt-5 grid max-h-[28rem] gap-2 overflow-y-auto pr-1">
@@ -76,11 +76,11 @@
                                     type="button"
                                     @click="selectWeek(week)"
                                     class="flex w-full items-center justify-between gap-3 rounded-xl2 border px-4 py-3.5 text-left transition-all"
-                                    :class="checkIn === week.check_in ? 'border-teal-500 bg-teal-50/60 shadow-glow ring-2 ring-teal-500/20' : 'border-slate-200 bg-white hover:border-navy-300'"
+                                    :class="checkIn === week.check_in ? 'border-teal-500 bg-teal-50/60 shadow-glow ring-2 ring-teal-500/20' : 'border-stone-200 bg-white hover:border-navy-300'"
                                 >
                                     <div class="min-w-0">
                                         <p class="font-semibold text-navy-900" x-text="week.label"></p>
-                                        <p class="mt-0.5 text-xs text-slate-500" x-text="'Hafta ' + week.week_no + ' · ' + week.range"></p>
+                                        <p class="mt-0.5 text-xs text-stone-500" x-text="'Hafta ' + week.week_no + ' · ' + week.range"></p>
                                     </div>
                                     <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
                                          :class="checkIn === week.check_in ? 'bg-navy-900 text-white' : 'bg-sand-100 text-navy-500'">
@@ -95,7 +95,7 @@
                 <!-- Adım 2: Tesis -->
                 <div x-show="step === 2" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Tesis seçimi</h2>
-                    <p class="mt-1 text-sm text-slate-500">
+                    <p class="mt-1 text-sm text-stone-500">
                         Seçilen kamp haftası:
                         <span class="font-semibold text-navy-800" x-text="weekLabel"></span>
                     </p>
@@ -112,8 +112,8 @@
                                     <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                                 </span>
                                 <span class="mt-2 font-semibold text-navy-900">{{ $f->name }}</span>
-                                <span class="text-xs text-slate-500">{{ $f->location }} · Kapasite {{ $f->capacity }} kişi</span>
-                                <span class="mt-1 text-xs leading-relaxed text-slate-400 line-clamp-2">{{ $f->description }}</span>
+                                <span class="text-xs text-stone-500">{{ $f->location }} · Kapasite {{ $f->capacity }} kişi</span>
+                                <span class="mt-1 text-xs leading-relaxed text-stone-400 line-clamp-2">{{ $f->description }}</span>
                             </button>
                         @endforeach
                     </div>
@@ -122,19 +122,19 @@
                 <!-- Adım 3 -->
                 <div x-show="step === 3" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Rezervasyon bilgileri</h2>
-                    <p class="mt-1 text-sm text-slate-500">Kişi sayısı ve varsa özel notunuzu girin.</p>
+                    <p class="mt-1 text-sm text-stone-500">Kişi sayısı ve varsa özel notunuzu girin.</p>
                     <div class="mt-6 grid gap-5 sm:grid-cols-2">
                         <div>
                             <label class="field-label">Kişi sayısı</label>
                             <div class="flex items-center gap-3">
-                                <button type="button" @click="guests = Math.max(1, guests - 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-navy-800 transition hover:bg-sand-50">−</button>
+                                <button type="button" @click="guests = Math.max(1, guests - 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-stone-200 text-navy-800 transition hover:bg-sand-50">−</button>
                                 <input type="number" x-model.number="guests" min="1" max="20" class="field-input text-center font-semibold">
-                                <button type="button" @click="guests = Math.min(20, guests + 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-navy-800 transition hover:bg-sand-50">+</button>
+                                <button type="button" @click="guests = Math.min(20, guests + 1)" class="flex h-11 w-11 items-center justify-center rounded-xl border border-stone-200 text-navy-800 transition hover:bg-sand-50">+</button>
                             </div>
                         </div>
                     </div>
                     <div class="mt-5">
-                        <label class="field-label">Ek not <span class="font-normal text-slate-400">(opsiyonel)</span></label>
+                        <label class="field-label">Ek not <span class="font-normal text-stone-400">(opsiyonel)</span></label>
                         <textarea x-model="note" rows="3" class="field-input" placeholder="Varsa özel talebinizi belirtin"></textarea>
                     </div>
                 </div>
@@ -142,15 +142,15 @@
                 <!-- Adım 4 -->
                 <div x-show="step === 4" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                     <h2 class="font-display text-xl font-semibold text-navy-900">Özet ve gönderim</h2>
-                    <p class="mt-1 text-sm text-slate-500">Kamp bilgilerinizi kontrol edin ve talebinizi gönderin.</p>
+                    <p class="mt-1 text-sm text-stone-500">Kamp bilgilerinizi kontrol edin ve talebinizi gönderin.</p>
 
-                    <div class="mt-6 overflow-hidden rounded-xl border border-slate-200/80">
-                        <div class="flex justify-between px-4 py-3 text-sm"><span class="text-slate-500">Tesis</span><span class="font-medium text-navy-900" x-text="facilityName"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Kamp haftası</span><span class="font-medium text-navy-900 text-right" x-text="weekLabel"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Süre</span><span class="font-medium text-navy-900">{{ $campNights }} gece (1 hafta)</span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Kişi</span><span class="font-medium text-navy-900" x-text="guests"></span></div>
-                        <div class="flex justify-between border-t border-slate-100 px-4 py-3 text-sm"><span class="text-slate-500">Sınıf</span><span class="font-medium text-navy-900">{{ $customerClass->name }}</span></div>
-                        <div class="flex justify-between border-t border-slate-100 bg-sand-50 px-4 py-4"><span class="font-semibold text-navy-900">Haftalık tutar</span><span class="font-display text-xl font-semibold text-teal-700">₺{{ number_format($customerClass->daily_price * $campNights, 0, ',', '.') }}</span></div>
+                    <div class="mt-6 overflow-hidden rounded-xl border border-stone-200/80">
+                        <div class="flex justify-between px-4 py-3 text-sm"><span class="text-stone-500">Tesis</span><span class="font-medium text-navy-900" x-text="facilityName"></span></div>
+                        <div class="flex justify-between border-t border-stone-100 px-4 py-3 text-sm"><span class="text-stone-500">Kamp haftası</span><span class="font-medium text-navy-900 text-right" x-text="weekLabel"></span></div>
+                        <div class="flex justify-between border-t border-stone-100 px-4 py-3 text-sm"><span class="text-stone-500">Süre</span><span class="font-medium text-navy-900">{{ $campNights }} gece (1 hafta)</span></div>
+                        <div class="flex justify-between border-t border-stone-100 px-4 py-3 text-sm"><span class="text-stone-500">Kişi</span><span class="font-medium text-navy-900" x-text="guests"></span></div>
+                        <div class="flex justify-between border-t border-stone-100 px-4 py-3 text-sm"><span class="text-stone-500">Sınıf</span><span class="font-medium text-navy-900">{{ $customerClass->name }}</span></div>
+                        <div class="flex justify-between border-t border-stone-100 bg-sand-50 px-4 py-4"><span class="font-semibold text-navy-900">Haftalık tutar</span><span class="font-display text-xl font-semibold text-teal-700">₺{{ number_format($customerClass->daily_price * $campNights, 0, ',', '.') }}</span></div>
                     </div>
                     <p class="field-hint mt-3">Bu tutar tahmindir. Admin onayının ardından ödeme adımında kesinleşir.</p>
                     <div class="mt-5 alert-soft border-teal-100 bg-teal-50/70 text-teal-900 ring-teal-100">
@@ -176,19 +176,23 @@
     <script>
         function reservationWizard() {
             const weeks = @js($weeks);
+            const oldCheckIn = @js(old('check_in'));
+            const oldWeek = weeks.find(w => w.check_in === oldCheckIn);
+            const oldFacilityId = @js(old('facility_id') ? (int) old('facility_id') : null);
+            const oldFacility = @js($facilities).find(f => f.id === oldFacilityId);
 
             return {
                 step: 1,
                 submitting: false,
                 stepLabels: ['Kamp haftası', 'Tesis', 'Bilgiler', 'Özet'],
                 weeks,
-                checkIn: '',
-                checkOut: '',
-                weekLabel: '',
-                facilityId: null,
-                facilityName: '',
-                guests: 1,
-                note: '',
+                checkIn: oldWeek?.check_in ?? '',
+                checkOut: oldWeek?.check_out ?? '',
+                weekLabel: oldWeek?.label ?? '',
+                facilityId: oldFacilityId,
+                facilityName: oldFacility?.name ?? '',
+                guests: {{ (int) old('guests', 1) }},
+                note: @js(old('note', '')),
 
                 get canProceed() {
                     if (this.step === 1) return !!this.checkIn && !!this.checkOut;

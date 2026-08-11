@@ -39,7 +39,7 @@
                 </label>
             </div>
 
-            <div x-show="method === 'credit_card'" x-transition class="mt-5 space-y-4 rounded-xl2 border border-slate-200/80 bg-white/70 p-4">
+            <div x-show="method === 'credit_card'" x-transition class="mt-5 space-y-4 rounded-xl2 border border-stone-200/80 bg-white/70 p-4">
                 <div><label class="field-label">Kart üzerindeki isim</label><input type="text" class="field-input" placeholder="Ad Soyad" autocomplete="cc-name"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="field-label">Kart numarası</label><input type="text" class="field-input" placeholder="•••• •••• •••• ••••" autocomplete="cc-number"></div>
