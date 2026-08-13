@@ -10,17 +10,32 @@ class Reservation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'facility_id', 'customer_class_id',
-        'check_in', 'check_out', 'guests', 'note',
-        'total_price', 'status', 'admin_note', 'decided_at',
+        'code', 'user_id', 'facility_id', 'room_type_id',
+        'period_id', 'second_period_id', 'start_date', 'end_date', 'nights',
+        'status', 'ground_floor_request', 'ground_floor_note', 'health_report_path',
+        'application_date', 'surcharge_per_person_day',
+        'empty_bed_count', 'empty_bed_fee_per_day', 'empty_bed_total',
+        'accommodation_total', 'adjustment_amount', 'adjustment_note', 'total_price',
+        'deposit_amount', 'deposit_status', 'balance_due_date', 'price_breakdown',
+        'note', 'admin_note', 'decided_at', 'approved_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'check_in' => 'date',
-            'check_out' => 'date',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'application_date' => 'date',
+            'balance_due_date' => 'date',
+            'ground_floor_request' => 'boolean',
+            'surcharge_per_person_day' => 'decimal:2',
+            'empty_bed_fee_per_day' => 'decimal:2',
+            'empty_bed_total' => 'decimal:2',
+            'accommodation_total' => 'decimal:2',
+            'adjustment_amount' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'deposit_amount' => 'decimal:2',
+            'price_breakdown' => 'array',
             'decided_at' => 'datetime',
         ];
     }
@@ -35,67 +50,103 @@ class Reservation extends Model
         return $this->belongsTo(Facility::class);
     }
 
-    public function customerClass()
+    public function roomType()
     {
-        return $this->belongsTo(CustomerClass::class);
+        return $this->belongsTo(RoomType::class);
     }
 
-    public function payment()
+    public function period()
     {
-        return $this->hasOne(Payment::class);
+        return $this->belongsTo(Period::class);
     }
 
-    public function nights(): int
+    public function secondPeriod()
     {
-        return max(1, $this->check_in->diffInDays($this->check_out));
+        return $this->belongsTo(Period::class, 'second_period_id');
     }
 
-    /** Haftalık kamp süresi (gece sayısı). */
-    public const CAMP_NIGHTS = 7;
-
-    /**
-     * Verilen Pazartesi başlangıçlı kamp haftasının çıkış günü (sonraki Pazartesi).
-     */
-    public static function campCheckOut(\Carbon\CarbonInterface $checkIn): \Carbon\CarbonInterface
+    public function guests()
     {
-        return $checkIn->copy()->startOfDay()->addDays(self::CAMP_NIGHTS);
+        return $this->hasMany(ReservationGuest::class)->orderBy('sort_order');
     }
 
-    public static function isValidCampWeek(\Carbon\CarbonInterface $checkIn, \Carbon\CarbonInterface $checkOut): bool
+    public function payments()
     {
-        $checkIn = $checkIn->copy()->startOfDay();
-        $checkOut = $checkOut->copy()->startOfDay();
-
-        return $checkIn->isMonday()
-            && $checkOut->equalTo(self::campCheckOut($checkIn));
+        return $this->hasMany(Payment::class);
     }
 
-    public static function calculatePrice(CustomerClass $class, int $nights): float
+    public function approver()
     {
-        return round((float) $class->daily_price * $nights, 2);
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function depositPayment()
+    {
+        return $this->hasOne(Payment::class)->where('kind', 'deposit')->latestOfMany();
+    }
+
+    public function balancePayment()
+    {
+        return $this->hasOne(Payment::class)->where('kind', 'balance')->latestOfMany();
+    }
+
+    /** @return list<Period> Bir veya ardışık iki devre. */
+    public function periodList(): array
+    {
+        return array_values(array_filter([$this->period, $this->secondPeriod]));
+    }
+
+    public function isTwoPeriods(): bool
+    {
+        return $this->second_period_id !== null;
+    }
+
+    public function depositVerified(): bool
+    {
+        return $this->deposit_status === 'verified';
+    }
+
+    /** Ödenmiş peşinat düşüldükten sonra kalan tutar (Madde 8/8). */
+    public function balanceDue(): float
+    {
+        $paid = (float) $this->payments()
+            ->where('status', 'success')
+            ->sum('amount');
+
+        return max(0, round((float) $this->total_price - $paid, 2));
+    }
+
+    public function paidTotal(): float
+    {
+        return (float) $this->payments()->where('status', 'success')->sum('amount');
+    }
+
+    /** Devre başlangıcına en az 10 gün varsa iptal edilebilir (Madde 8/11). */
+    public function isCancellable(): bool
+    {
+        if (! in_array($this->status, ['pending', 'approved'], true)) {
+            return false;
+        }
+
+        $minDays = (int) Setting::number('cancellation.min_days_before', 10);
+
+        return now()->startOfDay()->diffInDays($this->start_date, false) >= $minDays;
     }
 
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'pending' => 'Onay Bekliyor',
-            'approved' => 'Onaylandı',
-            'rejected' => 'Reddedildi',
+            'pending' => 'İnceleniyor',
+            'approved' => 'Yer Tahsis Edildi · Ödeme Bekleniyor',
             'paid' => 'Ödendi',
+            'rejected' => 'Reddedildi',
             'cancelled' => 'İptal Edildi',
             default => $this->status,
         };
     }
 
-    public function statusColor(): string
+    public function scopeOwnedBy($query, User $user)
     {
-        return match ($this->status) {
-            'pending' => 'amber',
-            'approved' => 'teal',
-            'rejected' => 'red',
-            'paid' => 'green',
-            'cancelled' => 'gray',
-            default => 'gray',
-        };
+        return $query->where('user_id', $user->id);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,8 +11,8 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'tc_no', 'phone', 'password',
-        'role', 'customer_class_id', 'is_active',
+        'name', 'email', 'membership_no', 'tc_no', 'phone', 'password',
+        'role', 'customer_group_id', 'dues_paid_year', 'is_active',
     ];
 
     protected $hidden = [
@@ -29,9 +28,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function customerClass()
+    public function customerGroup()
     {
-        return $this->belongsTo(CustomerClass::class);
+        return $this->belongsTo(CustomerGroup::class);
     }
 
     public function reservations()
@@ -50,8 +49,28 @@ class User extends Authenticatable
     }
 
     /**
-     * TC kimlik numarasını maskeler: 123**5**89
+     * İçinde bulunulan yıl dahil aidat borcu bulunan üyelerin müracaat formları
+     * işleme alınmaz (Madde 5/10). Dernek üyesi olmayanlar (III. Grup) muaftır.
      */
+    public function hasDuesDebt(?int $year = null): bool
+    {
+        if (! $this->customerGroup?->requires_membership) {
+            return false;
+        }
+
+        $year ??= (int) now()->year;
+
+        return $this->dues_paid_year === null || $this->dues_paid_year < $year;
+    }
+
+    public function canApply(): bool
+    {
+        return $this->is_active
+            && $this->customer_group_id !== null
+            && ! $this->hasDuesDebt();
+    }
+
+    /** TC kimlik numarasını maskeler: 123*****789 */
     public function maskedTcNo(): string
     {
         if (! $this->tc_no) {

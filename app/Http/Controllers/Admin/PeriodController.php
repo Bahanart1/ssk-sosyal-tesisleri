@@ -1,0 +1,121 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Facility;
+use App\Models\Period;
+use App\Models\Reservation;
+use App\Models\Tariff;
+use Illuminate\Http\Request;
+
+/**
+ * Devrelerin yönetimi: tarihler, indirimli/indirimsiz durumu, tarife ataması
+ * ve başvuruya açık olup olmadığı. Yeterli müracaat olmayan devreler Yönetim
+ * Kurulunca iptal edilerek ilan edilir (Madde 4/10).
+ */
+class PeriodController extends Controller
+{
+    public function index(Request $request)
+    {
+        $facilities = Facility::ordered()->get();
+        $facility = $facilities->firstWhere('id', (int) $request->get('facility')) ?? $facilities->first();
+        $year = (int) $request->get('year', now()->year);
+
+        $periods = Period::where('facility_id', $facility?->id)
+            ->where('year', $year)
+            ->with(['roomTariff', 'villaTariff'])
+            ->ordered()
+            ->get();
+
+        $counts = Reservation::whereIn('status', ['pending', 'approved', 'paid'])
+            ->whereIn('period_id', $periods->pluck('id'))
+            ->selectRaw('period_id, count(*) as total')
+            ->groupBy('period_id')
+            ->pluck('total', 'period_id');
+
+        return view('admin.periods.index', [
+            'facilities' => $facilities,
+            'facility' => $facility,
+            'year' => $year,
+            'years' => Period::distinct()->orderBy('year')->pluck('year'),
+            'periods' => $periods,
+            'counts' => $counts,
+            'roomTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'room')->ordered()->get(),
+            'villaTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'villa')->ordered()->get(),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'facility_id' => ['required', 'exists:facilities,id'],
+            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
+            'number' => ['required', 'integer', 'min:1', 'max:60'],
+            'start_date' => ['required', 'date'],
+            'nights' => ['required', 'integer', 'min:1', 'max:30'],
+            'is_discounted' => ['nullable', 'boolean'],
+            'combine_group' => ['nullable', 'integer', 'min:1'],
+            'room_tariff_id' => ['required', 'exists:tariffs,id'],
+            'villa_tariff_id' => ['nullable', 'exists:tariffs,id'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], [], [
+            'number' => 'devre no',
+            'start_date' => 'başlangıç tarihi',
+            'room_tariff_id' => 'oda tarifesi',
+        ]);
+
+        $exists = Period::where('facility_id', $data['facility_id'])
+            ->where('year', $data['year'])
+            ->where('number', $data['number'])
+            ->exists();
+
+        if ($exists) {
+            return back()->withInput()->withErrors(['number' => 'Bu tesis ve yıl için aynı numaralı devre zaten tanımlı.']);
+        }
+
+        $start = \Carbon\Carbon::parse($data['start_date']);
+
+        Period::create($data + [
+            'end_date' => $start->copy()->addDays($data['nights']),
+            'is_open' => true,
+        ]);
+
+        return back()->with('success', 'Devre eklendi.');
+    }
+
+    public function update(Request $request, Period $period)
+    {
+        $data = $request->validate([
+            'start_date' => ['required', 'date'],
+            'nights' => ['required', 'integer', 'min:1', 'max:30'],
+            'is_discounted' => ['nullable', 'boolean'],
+            'is_open' => ['nullable', 'boolean'],
+            'combine_group' => ['nullable', 'integer', 'min:1'],
+            'room_tariff_id' => ['required', 'exists:tariffs,id'],
+            'villa_tariff_id' => ['nullable', 'exists:tariffs,id'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], [], [
+            'start_date' => 'başlangıç tarihi',
+            'room_tariff_id' => 'oda tarifesi',
+        ]);
+
+        $start = \Carbon\Carbon::parse($data['start_date']);
+
+        $period->update($data + [
+            'end_date' => $start->copy()->addDays($data['nights']),
+            'is_discounted' => (bool) ($data['is_discounted'] ?? false),
+            'is_open' => (bool) ($data['is_open'] ?? false),
+        ]);
+
+        return back()->with('success', "{$period->label()} güncellendi.");
+    }
+
+    /** Devreyi başvuruya açar/kapatır. */
+    public function toggle(Period $period)
+    {
+        $period->update(['is_open' => ! $period->is_open]);
+
+        return back()->with('success', "{$period->label()} " . ($period->is_open ? 'başvuruya açıldı.' : 'başvuruya kapatıldı.'));
+    }
+}

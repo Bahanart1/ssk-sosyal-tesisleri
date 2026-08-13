@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
         ]);
 
+        // Banka sanal POS'u 3D Secure sonucunu çapraz site POST ile gönderir;
+        // bu istek CSRF belirteci taşıyamaz. Doğrulama bankanın imzasıyla yapılır.
+        $middleware->validateCsrfTokens(except: [
+            'odeme/*/sonuc',
+        ]);
+
         // Oturumlu kullanıcı /giris'e gelince / yerine role göre panele gitsin
         // (aksi halde / → /giris → / döngüsü oluşuyor)
         $middleware->redirectUsersTo(function ($request) {

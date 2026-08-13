@@ -9,13 +9,26 @@ class Facility extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'location', 'description', 'image', 'capacity', 'is_active'];
+    protected $fillable = ['slug', 'name', 'location', 'description', 'image', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
-        return [
-            'is_active' => 'boolean',
-        ];
+        return ['is_active' => 'boolean'];
+    }
+
+    public function roomTypes()
+    {
+        return $this->hasMany(RoomType::class);
+    }
+
+    public function periods()
+    {
+        return $this->hasMany(Period::class);
+    }
+
+    public function tariffs()
+    {
+        return $this->hasMany(Tariff::class);
     }
 
     public function reservations()
@@ -26,5 +39,10 @@ class Facility extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order')->orderBy('name');
     }
 }

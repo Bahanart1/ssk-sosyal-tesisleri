@@ -1,90 +1,289 @@
-<x-layouts.admin title="Rezervasyon Detayı">
+<x-layouts.admin :title="'Başvuru ' . $reservation->code">
 
-    <div x-data="{ rejectOpen: {{ $errors->any() ? 'true' : 'false' }} }" class="mx-auto max-w-2xl">
+    <div x-data="{ rejectOpen: false, cancelOpen: false }" class="mx-auto max-w-4xl">
         <a href="{{ route('admin.reservations.index') }}" class="back-link">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Rezervasyonlar
+            Başvurular
         </a>
 
-        <div class="mt-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="mt-4 mb-6 flex flex-wrap items-start justify-between gap-3">
             <div>
-                <p class="section-label">Rezervasyon</p>
-                <h1 class="page-title mt-1">#{{ $reservation->id }}</h1>
+                <p class="section-label">Başvuru</p>
+                <h1 class="page-title mt-1">{{ $reservation->code }}</h1>
+                <p class="page-subtitle">
+                    {{ $reservation->created_at->translatedFormat('d F Y H:i') }} ·
+                    Müracaat tarihi {{ $reservation->application_date->translatedFormat('d F Y') }}
+                </p>
             </div>
-            <x-status-badge :status="$reservation->status" />
-        </div>
-
-        <div class="surface mb-6 overflow-hidden">
-            <div class="border-b border-stone-100/80 px-6 py-4">
-                <h2 class="font-display text-lg font-semibold text-navy-900">Müşteri bilgileri</h2>
-            </div>
-            <div class="divide-y divide-stone-100/80">
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Ad soyad</span><span class="font-medium text-navy-900">{{ $reservation->user->name }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">TC kimlik no</span><span class="font-medium text-navy-900">{{ $reservation->user->maskedTcNo() }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Telefon</span><span class="font-medium text-navy-900">{{ $reservation->user->phone ?? '-' }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Müşteri sınıfı</span><span class="font-medium text-navy-900">{{ $reservation->customerClass->name }}</span></div>
-            </div>
-        </div>
-
-        <div class="surface mb-6 overflow-hidden">
-            <div class="border-b border-stone-100/80 px-6 py-4">
-                <h2 class="font-display text-lg font-semibold text-navy-900">Rezervasyon bilgileri</h2>
-            </div>
-            <div class="divide-y divide-stone-100/80">
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Tesis</span><span class="font-medium text-navy-900">{{ $reservation->facility->name }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Tarih aralığı</span><span class="font-medium text-navy-900">{{ $reservation->check_in->format('d.m.Y') }} — {{ $reservation->check_out->format('d.m.Y') }}</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Konaklama</span><span class="font-medium text-navy-900">{{ $reservation->nights() }} gece</span></div>
-                <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-stone-500">Kişi sayısı</span><span class="font-medium text-navy-900">{{ $reservation->guests }}</span></div>
-                @if ($reservation->note)
-                    <div class="flex justify-between gap-6 px-6 py-3.5 text-sm"><span class="text-stone-500">Müşteri notu</span><span class="max-w-xs text-right font-medium text-navy-900">{{ $reservation->note }}</span></div>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-status-badge :status="$reservation->status" class="!px-3 !py-1.5 !text-sm" />
+                @if (! in_array($reservation->status, ['paid', 'cancelled'], true))
+                    <a href="{{ route('admin.reservations.edit', $reservation) }}" class="btn-primary">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                        Düzenle ve Onayla
+                    </a>
                 @endif
-                <div class="flex justify-between bg-sand-50 px-6 py-4"><span class="font-semibold text-navy-900">Toplam tutar</span><span class="font-display text-xl font-semibold text-teal-700">₺{{ number_format($reservation->total_price, 0, ',', '.') }}</span></div>
             </div>
         </div>
 
-        @if ($reservation->status === 'paid' && $reservation->payment)
-            <div class="surface mb-6 px-6 py-5">
-                <p class="section-label">Ödeme bilgisi</p>
-                <p class="mt-2 text-sm text-stone-600">Yöntem: {{ $reservation->payment->method === 'credit_card' ? 'Kredi/Banka Kartı' : 'Havale/EFT' }}</p>
-                <p class="text-sm text-stone-600">Referans: {{ $reservation->payment->reference_no }}</p>
-                <p class="text-sm text-stone-600">Tarih: {{ $reservation->payment->paid_at->format('d.m.Y H:i') }}</p>
-            </div>
-        @endif
-
-        @if ($reservation->admin_note)
-            <div class="surface mb-6 px-6 py-5">
-                <p class="section-label">Yönetici notu</p>
-                <p class="mt-2 text-sm text-stone-600">{{ $reservation->admin_note }}</p>
-            </div>
-        @endif
-
-        @if ($reservation->status === 'pending')
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <form method="POST" action="{{ route('admin.reservations.approve', $reservation) }}" class="flex-1">
-                    @csrf
-                    <button type="submit" class="btn-accent w-full py-3">Rezervasyonu Onayla</button>
-                </form>
-                <button type="button" @click="rejectOpen = true" class="btn-danger flex-1 py-3">Rezervasyonu Reddet</button>
-            </div>
-
-            <template x-teleport="body">
-                <div x-show="rejectOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
-                    <div class="modal-scrim" @click="rejectOpen = false"></div>
-                    <div class="modal-panel" x-transition>
-                        <h3 class="font-display text-lg font-semibold text-navy-900">Rezervasyonu reddet</h3>
-                        <p class="mt-1 text-sm text-stone-500">Müşteriye gösterilecek bir açıklama girin.</p>
-                        <form method="POST" action="{{ route('admin.reservations.reject', $reservation) }}" class="mt-4">
-                            @csrf
-                            <textarea name="admin_note" required rows="3" class="field-input @error('admin_note') !border-red-400 @enderror" placeholder="Red gerekçesi…">{{ old('admin_note') }}</textarea>
-                            @error('admin_note') <p class="field-error">{{ $message }}</p> @enderror
-                            <div class="mt-4 flex gap-3">
-                                <button type="button" @click="rejectOpen = false" class="btn-secondary flex-1">Vazgeç</button>
-                                <button type="submit" class="btn-danger flex-1">Reddet</button>
+        <div class="grid gap-6 lg:grid-cols-3">
+            <div class="space-y-6 lg:col-span-2">
+                {{-- Konaklama --}}
+                <div class="surface overflow-hidden">
+                    <div class="border-b border-stone-100/80 px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-navy-900">Konaklama</h2>
+                    </div>
+                    <div class="divide-y divide-stone-100/80">
+                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-stone-500">Tesis</span><span class="font-medium text-navy-900">{{ $reservation->facility->name }}</span></div>
+                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-stone-500">Oda tipi</span><span class="font-medium text-navy-900">{{ $reservation->roomType->name }} ({{ $reservation->roomType->bed_count }} yatak)</span></div>
+                        <div class="flex justify-between gap-4 px-6 py-3 text-sm">
+                            <span class="text-stone-500">Devre</span>
+                            <span class="text-right font-medium text-navy-900">
+                                {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
+                                <span class="block text-xs font-normal text-stone-500">{{ $reservation->start_date->translatedFormat('d F Y') }} – {{ $reservation->end_date->translatedFormat('d F Y') }} · {{ $reservation->nights }} gün</span>
+                            </span>
+                        </div>
+                        @if ($reservation->ground_floor_request)
+                            <div class="flex justify-between gap-4 bg-amber-50/60 px-6 py-3 text-sm">
+                                <span class="font-medium text-amber-800">Zemin kat talebi</span>
+                                <span class="max-w-sm text-right text-amber-900">
+                                    {{ $reservation->ground_floor_note }}
+                                    @if ($reservation->health_report_path)
+                                        <a href="{{ route('documents.health-report', $reservation) }}" target="_blank" rel="noopener"
+                                           class="mt-1 block text-xs font-semibold text-teal-700 underline">Sağlık raporunu görüntüle</a>
+                                    @endif
+                                </span>
                             </div>
-                        </form>
+                        @endif
+                        @if ($reservation->note)
+                            <div class="flex justify-between gap-4 px-6 py-3 text-sm"><span class="text-stone-500">Üye notu</span><span class="max-w-sm text-right text-navy-900">{{ $reservation->note }}</span></div>
+                        @endif
                     </div>
                 </div>
-            </template>
-        @endif
+
+                {{-- Kişiler --}}
+                <div class="surface overflow-hidden">
+                    <div class="border-b border-stone-100/80 px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-navy-900">Konaklayacak kişiler ({{ $reservation->guests->count() }})</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ad Soyad</th>
+                                    <th>TC No</th>
+                                    <th>Doğum</th>
+                                    <th>Yakınlık</th>
+                                    <th>Grup</th>
+                                    <th>Yaş grubu</th>
+                                    <th>Tutar</th>
+                                    <th>Kimlik</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-100">
+                                @foreach ($reservation->guests as $guest)
+                                    <tr>
+                                        <td class="font-medium">{{ $guest->full_name }}</td>
+                                        <td class="font-mono text-xs">{{ $guest->tc_no }}</td>
+                                        <td class="text-xs">{{ $guest->birth_date->format('d.m.Y') }}</td>
+                                        <td class="text-xs">{{ $guest->relationLabel() }}</td>
+                                        <td class="text-xs">{{ $guest->customerGroup->name }}</td>
+                                        <td class="text-xs">
+                                            {{ $guest->ageCategoryLabel() }}
+                                            @if ($guest->wants_meal)
+                                                <span class="badge-amber !py-0.5 !text-[10px]">yemekli</span>
+                                            @endif
+                                        </td>
+                                        <td><x-money :value="$guest->line_total" zero="Ücretsiz" class="text-xs font-semibold" /></td>
+                                        <td>
+                                            @if ($guest->id_document_path)
+                                                <a href="{{ route('documents.identity', $guest) }}" target="_blank" rel="noopener"
+                                                   class="btn-ghost !px-2.5 !py-1 text-xs">Görüntüle</a>
+                                            @else
+                                                <span class="badge-red !py-0.5 !text-[10px]">Eksik</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Ödemeler --}}
+                <div class="surface overflow-hidden">
+                    <div class="border-b border-stone-100/80 px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-navy-900">Ödemeler</h2>
+                    </div>
+                    @if ($reservation->payments->isEmpty())
+                        <p class="px-6 py-8 text-center text-sm text-stone-400">Ödeme kaydı yok.</p>
+                    @else
+                        <ul class="divide-y divide-stone-100">
+                            @foreach ($reservation->payments->sortBy('created_at') as $payment)
+                                <li class="px-6 py-3.5">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-medium text-navy-900">
+                                                {{ $payment->kindLabel() }} · {{ $payment->methodLabel() }}
+                                                @if ($payment->installment > 1) · {{ $payment->installment }} taksit @endif
+                                            </p>
+                                            <p class="text-xs text-stone-500">
+                                                {{ $payment->reference_no }} ·
+                                                {{ ($payment->paid_at ?? $payment->created_at)->translatedFormat('d F Y H:i') }}
+                                                @if ($payment->verifier) · {{ $payment->verifier->name }} doğruladı @endif
+                                                @if ($payment->failure_reason) · {{ $payment->failure_reason }} @endif
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <x-money :value="$payment->amount" class="text-sm font-semibold text-navy-800" />
+                                            <x-status-badge :status="$payment->status" />
+                                        </div>
+                                    </div>
+
+                                    @if ($payment->method === 'bank_transfer' && $payment->status === 'pending')
+                                        <div x-data="{ rejectPayment: false }" class="mt-2.5 flex flex-wrap gap-2">
+                                            @if ($payment->receipt_path)
+                                                <a href="{{ route('documents.receipt', $payment) }}" target="_blank" rel="noopener"
+                                                   class="btn-secondary !px-3 !py-1.5 text-xs">Dekontu Görüntüle</a>
+                                            @endif
+                                            <form method="POST" action="{{ route('admin.payments.verify', $payment) }}">
+                                                @csrf
+                                                <button class="btn-accent !px-3 !py-1.5 text-xs">Doğrula</button>
+                                            </form>
+                                            <button type="button" @click="rejectPayment = !rejectPayment" class="btn-ghost !px-3 !py-1.5 text-xs !text-red-600">Reddet</button>
+
+                                            <form x-show="rejectPayment" x-cloak method="POST" action="{{ route('admin.payments.reject', $payment) }}" class="mt-2 flex w-full gap-2">
+                                                @csrf
+                                                <input type="text" name="reason" required placeholder="Red gerekçesi" class="field-input !py-1.5 text-xs">
+                                                <button class="btn-danger !px-3 !py-1.5 text-xs">Onayla</button>
+                                            </form>
+                                        </div>
+                                    @elseif ($payment->receipt_path)
+                                        <a href="{{ route('documents.receipt', $payment) }}" target="_blank" rel="noopener"
+                                           class="btn-ghost mt-2 !px-2.5 !py-1 text-xs">Dekont</a>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Yan panel --}}
+            <div class="space-y-6">
+                {{-- Üye --}}
+                <div class="surface overflow-hidden">
+                    <div class="border-b border-stone-100/80 px-5 py-3.5">
+                        <h2 class="font-display text-base font-semibold text-navy-900">Başvuru sahibi</h2>
+                    </div>
+                    <div class="divide-y divide-stone-100/80 text-sm">
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Ad soyad</span><span class="font-medium text-navy-900">{{ $reservation->user->name }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Üyelik no</span><span class="font-medium text-navy-900">{{ $reservation->user->membership_no ?? '-' }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">TC no</span><span class="font-mono text-xs text-navy-900">{{ $reservation->user->tc_no }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Telefon</span><span class="font-medium text-navy-900">{{ $reservation->user->phone ?? '-' }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Grup</span><span class="font-medium text-navy-900">{{ $reservation->user->customerGroup?->name ?? '-' }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5">
+                            <span class="text-stone-500">Aidat</span>
+                            <span class="font-medium {{ $reservation->user->hasDuesDebt() ? 'text-red-600' : 'text-emerald-700' }}">
+                                {{ $reservation->user->hasDuesDebt() ? 'Borçlu' : 'Ödendi' }}
+                                @if ($reservation->user->dues_paid_year) ({{ $reservation->user->dues_paid_year }}) @endif
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Tutar --}}
+                <div class="surface overflow-hidden">
+                    <div class="border-b border-stone-100/80 px-5 py-3.5">
+                        <h2 class="font-display text-base font-semibold text-navy-900">Tutar</h2>
+                    </div>
+                    <div class="divide-y divide-stone-100/80 text-sm">
+                        @if ($reservation->surcharge_per_person_day > 0)
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Müracaat farkı</span><x-money :value="$reservation->surcharge_per_person_day" class="font-medium text-navy-900" /></div>
+                        @endif
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Konaklama</span><x-money :value="$reservation->accommodation_total" class="font-medium text-navy-900" /></div>
+                        @if ($reservation->empty_bed_total > 0)
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Boş yatak ({{ $reservation->empty_bed_count }})</span><x-money :value="$reservation->empty_bed_total" class="font-medium text-navy-900" /></div>
+                        @endif
+                        @if ((float) $reservation->adjustment_amount !== 0.0)
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">{{ $reservation->adjustment_note ?: 'Düzeltme' }}</span><x-money :value="$reservation->adjustment_amount" class="font-medium text-navy-900" /></div>
+                        @endif
+                        <div class="flex justify-between bg-sand-50 px-5 py-3"><span class="font-semibold text-navy-900">Toplam</span><x-money :value="$reservation->total_price" class="font-display text-lg font-semibold text-teal-700" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Peşinat</span><x-money :value="$reservation->deposit_amount" class="font-medium text-navy-900" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-navy-900" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-stone-600">Kalan bakiye</span><x-money :value="$reservation->balanceDue()" class="font-semibold text-navy-900" /></div>
+                        @if ($reservation->balance_due_date)
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Son ödeme</span><span class="font-medium text-navy-900">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span></div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Karar --}}
+                @if (in_array($reservation->status, ['pending', 'approved'], true))
+                    <div class="surface p-5">
+                        <p class="section-label">Karar</p>
+                        <div class="mt-3 space-y-2">
+                            @if ($reservation->status === 'pending')
+                                <a href="{{ route('admin.reservations.edit', $reservation) }}" class="btn-accent w-full">Düzenle ve Onayla</a>
+                                <form method="POST" action="{{ route('admin.reservations.approve', $reservation) }}">
+                                    @csrf
+                                    <button class="btn-primary w-full">Olduğu Gibi Onayla</button>
+                                </form>
+                            @endif
+                            <button type="button" @click="rejectOpen = true" class="btn-secondary w-full !text-red-600">Reddet</button>
+                            <button type="button" @click="cancelOpen = true" class="btn-ghost w-full !text-stone-500">İptal Et</button>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($reservation->admin_note)
+                    <div class="surface p-5">
+                        <p class="section-label">Yönetim notu</p>
+                        <p class="mt-2 whitespace-pre-line text-sm text-stone-600">{{ $reservation->admin_note }}</p>
+                        @if ($reservation->approver)
+                            <p class="mt-2 text-xs text-stone-400">{{ $reservation->approver->name }} · {{ $reservation->decided_at?->translatedFormat('d F Y H:i') }}</p>
+                        @endif
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Red modalı --}}
+        <template x-teleport="body">
+            <div x-show="rejectOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
+                <div class="modal-scrim" @click="rejectOpen = false"></div>
+                <div class="modal-panel" x-transition>
+                    <h3 class="font-display text-lg font-semibold text-navy-900">Başvuruyu reddet</h3>
+                    <p class="mt-1 text-sm text-stone-500">Üyeye gösterilecek gerekçeyi girin.</p>
+                    <form method="POST" action="{{ route('admin.reservations.reject', $reservation) }}" class="mt-4">
+                        @csrf
+                        <textarea name="admin_note" required rows="3" class="field-input" placeholder="Red gerekçesi…">{{ old('admin_note') }}</textarea>
+                        @error('admin_note') <p class="field-error">{{ $message }}</p> @enderror
+                        <div class="mt-4 flex gap-3">
+                            <button type="button" @click="rejectOpen = false" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="submit" class="btn-danger flex-1">Reddet</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        {{-- İptal modalı --}}
+        <template x-teleport="body">
+            <div x-show="cancelOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
+                <div class="modal-scrim" @click="cancelOpen = false"></div>
+                <div class="modal-panel" x-transition>
+                    <h3 class="font-display text-lg font-semibold text-navy-900">Başvuruyu iptal et</h3>
+                    <form method="POST" action="{{ route('admin.reservations.cancel', $reservation) }}" class="mt-4">
+                        @csrf
+                        <textarea name="admin_note" required rows="3" class="field-input" placeholder="İptal gerekçesi…"></textarea>
+                        <div class="mt-4 flex gap-3">
+                            <button type="button" @click="cancelOpen = false" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="submit" class="btn-danger flex-1">İptal Et</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
     </div>
 </x-layouts.admin>

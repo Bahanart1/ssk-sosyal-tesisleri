@@ -9,31 +9,34 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::user()->load('customerClass');
+        $user = Auth::user()->load('customerGroup');
 
         $reservations = $user->reservations()
-            ->with(['facility', 'customerClass', 'payment'])
-            ->latest('check_in')
+            ->with(['facility', 'roomType', 'period', 'secondPeriod', 'payments'])
+            ->latest('created_at')
             ->get();
 
-        $current = $reservations->firstWhere('status', 'approved')
-            ?? $reservations->firstWhere('status', 'paid');
-
-        $upcoming = $reservations->where('check_in', '>=', now()->startOfDay())
-            ->whereIn('status', ['approved', 'paid', 'pending'])
-            ->sortBy('check_in')
+        $active = $reservations
+            ->whereIn('status', ['pending', 'approved', 'paid'])
+            ->sortBy('start_date')
             ->first();
 
-        $previous = $reservations->whereIn('status', ['paid', 'cancelled', 'rejected'])
-            ->where('check_out', '<', now())
+        $awaitingPayment = $reservations->where('status', 'approved')
+            ->filter(fn ($r) => $r->balanceDue() > 0)
+            ->sortBy('balance_due_date');
+
+        $past = $reservations->whereIn('status', ['rejected', 'cancelled'])
+            ->merge($reservations->where('status', 'paid')->filter(fn ($r) => $r->end_date->isPast()))
+            ->sortByDesc('created_at')
             ->take(5);
 
         return view('customer.dashboard', [
             'user' => $user,
             'reservations' => $reservations,
-            'current' => $current,
-            'upcoming' => $upcoming,
-            'previous' => $previous,
+            'active' => $active,
+            'awaitingPayment' => $awaitingPayment,
+            'past' => $past,
+            'hasDuesDebt' => $user->hasDuesDebt(),
         ]);
     }
 }

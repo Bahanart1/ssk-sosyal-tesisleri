@@ -10,12 +10,13 @@ return new class extends Migration
     {
         Schema::create('facilities', function (Blueprint $table) {
             $table->id();
+            $table->string('slug')->unique();  // colakli, gure
             $table->string('name');
             $table->string('location')->nullable();
             $table->text('description')->nullable();
             $table->string('image')->nullable();
-            $table->unsignedInteger('capacity')->default(1);
             $table->boolean('is_active')->default(true);
+            $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
         });
     }

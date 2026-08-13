@@ -1,59 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SSK Sosyal Tesisleri — Kamp Rezervasyon Sistemi
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sigorta Eğitim, Dinlenme ve Sosyal Tesisler Derneği'nin **Çolaklı** ve **Güre** tesisleri için
+internet üzerinden müracaat, yönetici değerlendirmesi ve ödeme sistemi.
 
-## About Laravel
+Telefonla alınan rezervasyonların yerini alır: üye başvurusunu peşinatıyla birlikte
+gönderir, yönetici talebi inceleyip **oda tipini, devreyi, kişi listesini ve tutarı
+değiştirebilir**, ardından yer tahsisini onaylayarak üyeye bakiye ödemesi için açar.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Kurallar ve ücretler [sigortader.com.tr](https://sigortader.com.tr) üzerinde yayımlanan
+**"2026 Yılı Kamp Dönemleri ve Ücretleri"** ile **"Kamp Konaklama Usul ve Esasları"**
+belgelerinden birebir alınmıştır.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Kurulum
 
-## Learning Laravel
+```bash
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+php artisan migrate:fresh --seed
+npm run build
+php artisan serve
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Demo hesaplar
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Rol | Giriş | Şifre |
+|---|---|---|
+| Yönetici | `admin@sigortader.com.tr` (`/admin/giris`) | `admin123` |
+| Üye · I. Grup | TC `12345678901` | `musteri123` |
+| Üye · II. Grup | TC `98765432109` | `musteri123` |
+| Üye · aidat borçlu | TC `11122233344` | `musteri123` |
+| Misafir · III. Grup | TC `55566677788` | `musteri123` |
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Alan kuralları
 
-### Premium Partners
+**Devre** — Pazar girişle başlar, takip eden cumartesi sona erer; 6 gecedir (Madde 7/1).
+Üye bir devre veya *birleşen devreler* listesindeki ardışık iki devre (13 gece) için
+başvurabilir (Madde 5/7).
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+**Müşteri grupları** — Her kişi kendi grubuna göre ücretlendirilir:
 
-## Contributing
+| Grup | Kapsam |
+|---|---|
+| I. Grup | Dernek üyesi ve bakmakla yükümlü olduğu aile fertleri |
+| II. Grup | Üyenin gelini, damadı ve torunu |
+| III. Grup | Dernek üyesi olmayanlar (misafir) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Ücret tabloları** — `Tablo 1` oda ücretleri, `Tablo 2` Çolaklı villalarının yemeksiz
+ücretleridir. Villa tablosundaki indirimli devre grubu oda tablosundan farklı olduğundan
+(villa 1-2-3, oda 1 ve 3) her devre ayrı ayrı oda ve villa tarifesine bağlanır.
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Fiyat motoru
 
-## Security Vulnerabilities
+`app/Services/Pricing/ReservationPricer.php` tek doğruluk kaynağıdır; müşteri sihirbazının
+canlı özeti, yöneticinin düzenleme ekranı ve kayıt anındaki tutar aynı sınıftan geçer.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Kişi başı günlük birim ücret sırasıyla:
 
-## License
+1. **Tablo ücreti** — tesis × devre bandı × müşteri grubu
+2. **Zemin kat indirimi** — Çolaklı iki kişilik zemin kat odalarında %10
+3. **Yaş katsayısı** — 12+ tam · 6-11 yaş %60 · 0-5 yaş ücretsiz (yemek talebinde %40).
+   Yaş, devre başlangıç tarihine göre hesaplanır (Madde 8/7).
+4. **Müracaat tarihi farkı** — 01.04–30.06 arası +200 ₺, 01.07 sonrası +300 ₺ (kişi/gün)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Üzerine:
+
+- **Villa asgari tutarı** — villalar en az beş kişi üzerinden ücretlendirilir (Madde 8/3)
+- **Boş yatak ücreti** — yalnız indirimsiz devrelerde; Güre'de 3 kişilik odada 2 kişi
+  konaklarsa alınmaz (Madde 8/9-10)
+- **Peşinat** — oda/villa başına 10.000 ₺ (iki devre 20.000 ₺); tek kişi konaklamada yarısı
+- **Bakiye vadesi** — tahsis bildiriminden 15 gün; devre başlangıcına daha az kalmışsa
+  devre başlangıcı (Madde 8/8)
+
+Onay anında dökümün tamamı `reservations.price_breakdown` alanına yazılır; tarifeler
+sonradan değişse de onaylanmış başvurunun tutarı sabit kalır.
+
+Tüm bu kurallar `tests/Feature/PricingTest.php` içinde yayımlanan tablolara karşı doğrulanır.
+
+---
+
+## Ödeme
+
+Peşinat ve bakiye iki kanaldan tahsil edilir:
+
+- **Havale / EFT** — üye dekont yükler, yönetici doğrular (Madde 5/8, 6/4)
+- **Kart** — banka sanal POS'u üzerinden, 3D Secure ve taksit desteğiyle
+
+Sanal POS katmanı `App\Services\Payment\PaymentGateway` arayüzü arkasındadır:
+
+| Sürücü | Açıklama |
+|---|---|
+| `fake` | Uygulama içi 3D Secure benzetimi. Banka bilgisi gerektirmez, akışın tamamı test edilebilir. |
+| `nestpay` | NestPay/EST altyapılı banka sanal POS'u (Akbank, İş Bankası, Ziraat, Halkbank). |
+
+Banka anlaşması tamamlandığında `.env` dosyasına terminal bilgileri girilip
+`PAYMENT_DRIVER=nestpay` yapılması yeterlidir; akışın geri kalanı değişmez. Farklı bir
+altyapı seçilirse yalnızca `PaymentGateway` arayüzünü uygulayan yeni bir sınıf yazılır.
+
+> Şu an `PAYMENT_DRIVER=fake` ile gelir. Ödeme ekranı test ortamı olduğunu açıkça belirtir.
+
+---
+
+## Belge güvenliği
+
+Kimlik belgeleri, banka dekontları ve sağlık raporları kişisel veri içerir. Bu dosyalar
+public diske **yazılmaz**; `storage/app/private` altında tutulur ve yalnızca başvuru
+sahibine ve yöneticilere, her istekte yetki kontrolünden geçen route'lar üzerinden sunulur
+(`App\Http\Controllers\DocumentController`).
+
+---
+
+## Yönetim paneli
+
+| Ekran | İşlev |
+|---|---|
+| Genel Bakış | Bekleyen talepler, tahsilat, devre doluluğu |
+| Başvurular | Filtreleme, detay, **düzenleme ve yer tahsisi onayı** |
+| Ödemeler | Havale dekontlarının doğrulanması, POS işlemlerinin izlenmesi |
+| Devreler | Devre tarihleri, tarife ataması, başvuruya açma/kapatma |
+| Tarifeler | Tablo 1 ve Tablo 2 ücretlerinin düzenlenmesi |
+| Tesis & Odalar | Oda tipleri, yatak sayıları, envanter |
+| Üyeler | Giriş bilgileri, grup ataması, aidat durumu |
+| Parametreler | Peşinat, müracaat farkı kademeleri, çocuk oranları, banka hesapları |
+
+Aidat borcu bulunan üyelerin müracaat formu işleme alınmaz (Madde 5/10); yönetici aidatı
+"ödendi" olarak işaretleyerek başvuru hakkını açar.
+
+---
+
+## Testler
+
+```bash
+php artisan test
+```
+
+- `PricingTest` — fiyat motorunun yayımlanan ücret tablolarıyla birebir uyumu
+- `ReservationFlowTest` — başvuru, belge yetkilendirmesi, yönetici düzenlemesi, ödeme akışı
+- `ScreensRenderTest` — tüm ekranların hatasız açılması
+
+---
+
+## Kapsam dışı
+
+- SMS bilgilendirmesi (Madde 6/7) ve e-arşiv fatura gönderimi (Madde 9) — dış servis gerektirir
+- Yer tahsisi otomatik yapılmaz: müracaat ve peşinat tahsis anlamına gelmediğinden
+  (Madde 6/1) sistem yöneticiye doluluk bilgisi sunar, kararı yönetici verir

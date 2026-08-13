@@ -1,16 +1,20 @@
 <?php
 
-use App\Http\Controllers\Admin\CampWeekController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FacilityController;
-use App\Http\Controllers\Admin\PricingController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Admin\PeriodController;
 use App\Http\Controllers\Admin\ReservationController as AdminReservationController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
-use App\Http\Controllers\Customer\PaymentController;
+use App\Http\Controllers\Customer\PaymentController as CustomerPaymentController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\PaymentFlowController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,7 +29,7 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Müşteri kimlik doğrulama
+| Üye kimlik doğrulama
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
@@ -36,23 +40,52 @@ Route::post('/cikis', [LoginController::class, 'logout'])->middleware('auth')->n
 
 /*
 |--------------------------------------------------------------------------
-| Müşteri paneli
+| Sanal POS dönüşü
+|--------------------------------------------------------------------------
+| Banka, 3D Secure sonucunu kullanıcının tarayıcısı üzerinden POST eder.
+| Çapraz site istek olduğu için oturum ve CSRF koşulu aranmaz; doğrulama
+| bankanın imzasıyla yapılır (bkz. NestPayGateway::verifyHash).
+*/
+Route::match(['get', 'post'], '/odeme/{payment}/sonuc', [PaymentFlowController::class, 'callback'])
+    ->name('payment.callback');
+Route::get('/odeme/{payment}/simulasyon', [PaymentFlowController::class, 'simulate'])
+    ->middleware('auth')
+    ->name('payment.simulate');
+
+/*
+|--------------------------------------------------------------------------
+| Belgeler — kimlik, dekont ve sağlık raporu
+|--------------------------------------------------------------------------
+| Kişisel veri içerdiği için her istekte yetki kontrolünden geçer.
+*/
+Route::middleware('auth')->prefix('belge')->name('documents.')->group(function () {
+    Route::get('/kimlik/{guest}', [DocumentController::class, 'identity'])->name('identity');
+    Route::get('/dekont/{payment}', [DocumentController::class, 'receipt'])->name('receipt');
+    Route::get('/rapor/{reservation}', [DocumentController::class, 'healthReport'])->name('health-report');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Üye paneli
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'role:customer'])->prefix('panel')->name('customer.')->group(function () {
     Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/rezervasyon/yeni', [CustomerReservationController::class, 'create'])->name('reservations.create');
-    Route::post('/rezervasyon', [CustomerReservationController::class, 'store'])->name('reservations.store');
-    Route::get('/rezervasyon/{reservation}', [CustomerReservationController::class, 'show'])->name('reservations.show');
+    Route::get('/basvuru/yeni', [CustomerReservationController::class, 'create'])->name('reservations.create');
+    Route::post('/basvuru/fiyat-hesapla', [CustomerReservationController::class, 'quote'])->name('reservations.quote');
+    Route::post('/basvuru', [CustomerReservationController::class, 'store'])->name('reservations.store');
+    Route::get('/basvuru/{reservation}', [CustomerReservationController::class, 'show'])->name('reservations.show');
+    Route::post('/basvuru/{reservation}/iptal', [CustomerReservationController::class, 'cancel'])->name('reservations.cancel');
 
-    Route::get('/rezervasyon/{reservation}/odeme', [PaymentController::class, 'show'])->name('payment.show');
-    Route::post('/rezervasyon/{reservation}/odeme', [PaymentController::class, 'process'])->name('payment.process');
+    Route::get('/basvuru/{reservation}/odeme', [CustomerPaymentController::class, 'show'])->name('payment.show');
+    Route::post('/basvuru/{reservation}/odeme/kart', [CustomerPaymentController::class, 'card'])->name('payment.card');
+    Route::post('/basvuru/{reservation}/odeme/havale', [CustomerPaymentController::class, 'transfer'])->name('payment.transfer');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Admin kimlik doğrulama
+| Yönetim paneli
 |--------------------------------------------------------------------------
 */
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -62,31 +95,49 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
     Route::post('/cikis', [AdminAuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-    /*
-    |----------------------------------------------------------------------
-    | Admin paneli
-    |----------------------------------------------------------------------
-    */
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-        Route::get('/rezervasyonlar', [AdminReservationController::class, 'index'])->name('reservations.index');
-        Route::get('/rezervasyonlar/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show');
-        Route::post('/rezervasyonlar/{reservation}/onayla', [AdminReservationController::class, 'approve'])->name('reservations.approve');
-        Route::post('/rezervasyonlar/{reservation}/reddet', [AdminReservationController::class, 'reject'])->name('reservations.reject');
+        // Başvurular
+        Route::get('/basvurular', [AdminReservationController::class, 'index'])->name('reservations.index');
+        Route::get('/basvurular/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show');
+        Route::get('/basvurular/{reservation}/duzenle', [AdminReservationController::class, 'edit'])->name('reservations.edit');
+        Route::put('/basvurular/{reservation}', [AdminReservationController::class, 'update'])->name('reservations.update');
+        Route::post('/basvurular/{reservation}/onayla', [AdminReservationController::class, 'approve'])->name('reservations.approve');
+        Route::post('/basvurular/{reservation}/reddet', [AdminReservationController::class, 'reject'])->name('reservations.reject');
+        Route::post('/basvurular/{reservation}/iptal', [AdminReservationController::class, 'cancel'])->name('reservations.cancel');
 
-        Route::get('/musteriler', [CustomerController::class, 'index'])->name('customers.index');
-        Route::post('/musteriler', [CustomerController::class, 'store'])->name('customers.store');
-        Route::put('/musteriler/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        // Ödemeler
+        Route::get('/odemeler', [AdminPaymentController::class, 'index'])->name('payments.index');
+        Route::post('/odemeler/{payment}/dogrula', [AdminPaymentController::class, 'verify'])->name('payments.verify');
+        Route::post('/odemeler/{payment}/reddet', [AdminPaymentController::class, 'reject'])->name('payments.reject');
 
-        Route::get('/fiyatlandirma', [PricingController::class, 'index'])->name('pricing.index');
-        Route::put('/fiyatlandirma/{class}', [PricingController::class, 'update'])->name('pricing.update');
+        // Devreler
+        Route::get('/devreler', [PeriodController::class, 'index'])->name('periods.index');
+        Route::post('/devreler', [PeriodController::class, 'store'])->name('periods.store');
+        Route::put('/devreler/{period}', [PeriodController::class, 'update'])->name('periods.update');
+        Route::post('/devreler/{period}/durum', [PeriodController::class, 'toggle'])->name('periods.toggle');
 
+        // Tarifeler
+        Route::get('/tarifeler', [TariffController::class, 'index'])->name('tariffs.index');
+        Route::post('/tarifeler', [TariffController::class, 'store'])->name('tariffs.store');
+        Route::put('/tarifeler/{tariff}', [TariffController::class, 'update'])->name('tariffs.update');
+
+        // Tesisler ve oda tipleri
         Route::get('/tesisler', [FacilityController::class, 'index'])->name('facilities.index');
         Route::post('/tesisler', [FacilityController::class, 'store'])->name('facilities.store');
         Route::put('/tesisler/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
+        Route::post('/tesisler/{facility}/oda-tipleri', [FacilityController::class, 'storeRoomType'])->name('room-types.store');
+        Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update');
 
-        Route::get('/kamp-haftalari', [CampWeekController::class, 'index'])->name('camp-weeks.index');
-        Route::put('/kamp-haftalari', [CampWeekController::class, 'update'])->name('camp-weeks.update');
+        // Üyeler
+        Route::get('/uyeler', [CustomerController::class, 'index'])->name('customers.index');
+        Route::post('/uyeler', [CustomerController::class, 'store'])->name('customers.store');
+        Route::put('/uyeler/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::post('/uyeler/{customer}/aidat', [CustomerController::class, 'markDuesPaid'])->name('customers.dues');
+
+        // Parametreler
+        Route::get('/parametreler', [SettingController::class, 'index'])->name('settings.index');
+        Route::put('/parametreler', [SettingController::class, 'update'])->name('settings.update');
     });
 });

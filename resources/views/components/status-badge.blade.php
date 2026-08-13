@@ -2,11 +2,17 @@
 
 @php
     $map = [
-        'pending' => ['badge-amber', 'Onay Bekliyor'],
-        'approved' => ['badge-teal', 'Onaylandı'],
-        'rejected' => ['badge-red', 'Reddedildi'],
+        'pending' => ['badge-amber', 'İnceleniyor'],
+        'approved' => ['badge-teal', 'Yer Tahsis Edildi'],
         'paid' => ['badge-green', 'Ödendi'],
+        'rejected' => ['badge-red', 'Reddedildi'],
         'cancelled' => ['badge-gray', 'İptal Edildi'],
+
+        // Ödeme durumları
+        'verified' => ['badge-green', 'Doğrulandı'],
+        'failed' => ['badge-red', 'Başarısız'],
+        'refunded' => ['badge-gray', 'İade Edildi'],
+        'success' => ['badge-green', 'Onaylandı'],
     ];
     [$class, $label] = $map[$status] ?? ['badge-gray', $status];
 @endphp

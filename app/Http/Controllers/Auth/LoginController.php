@@ -11,10 +11,6 @@ class LoginController extends Controller
 {
     public function show()
     {
-        if (Auth::check() && Auth::user()->isCustomer()) {
-            return redirect()->route('customer.dashboard');
-        }
-
         return view('auth.login');
     }
 
@@ -22,18 +18,23 @@ class LoginController extends Controller
     {
         $credentials = $request->validate([
             'tc_no' => ['required', 'digits:11'],
-            'password' => ['required'],
-        ], [
-            'tc_no.digits' => 'TC Kimlik No 11 haneli olmalıdır.',
+            'password' => ['required', 'string'],
+        ], [], [
+            'tc_no' => 'TC kimlik numarası',
+            'password' => 'şifre',
         ]);
 
-        $user = \App\Models\User::where('tc_no', $credentials['tc_no'])
-            ->where('role', 'customer')
-            ->first();
-
-        if (! $user || ! $user->is_active || ! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attempt(['tc_no' => $credentials['tc_no'], 'password' => $credentials['password'], 'role' => 'customer'], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'tc_no' => 'TC Kimlik No veya şifre hatalı.',
+                'tc_no' => 'Girdiğiniz bilgilerle eşleşen bir hesap bulunamadı.',
+            ]);
+        }
+
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'tc_no' => 'Hesabınız pasif durumda. Lütfen Dernek ile iletişime geçin.',
             ]);
         }
 
@@ -44,10 +45,12 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        $isAdmin = $request->user()?->isAdmin();
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route($isAdmin ? 'admin.login' : 'login');
     }
 }

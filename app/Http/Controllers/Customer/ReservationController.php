@@ -3,103 +3,211 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\CampWeek;
+use App\Http\Requests\Customer\StoreReservationRequest;
+use App\Models\CustomerGroup;
 use App\Models\Facility;
+use App\Models\Period;
 use App\Models\Reservation;
-use Carbon\Carbon;
+use App\Models\ReservationGuest;
+use App\Models\Setting;
+use App\Services\PaymentService;
+use App\Services\ReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ReservationController extends Controller
 {
-    /**
-     * Haftalık kamp rezervasyonu oluşturma ekranı.
-     */
+    public function __construct(
+        private readonly ReservationService $reservations,
+        private readonly PaymentService $payments,
+    ) {}
+
     public function create()
     {
         $user = Auth::user();
 
-        if (! $user->customer_class_id) {
+        if (! $user->customer_group_id) {
             return redirect()->route('customer.dashboard')
-                ->with('error', 'Hesabınıza henüz bir müşteri sınıfı atanmamış. Lütfen yönetim ile iletişime geçin.');
+                ->with('error', 'Hesabınıza henüz bir müşteri grubu atanmamış. Lütfen Dernek ile iletişime geçin.');
         }
 
-        $facilities = Facility::active()->orderBy('name')->get();
-        $weeks = CampWeek::upcomingWeeks(12, onlyOpen: true);
+        if ($user->hasDuesDebt()) {
+            return redirect()->route('customer.dashboard')
+                ->with('error', 'Aidat borcunuz bulunduğu için müracaat formunuz işleme alınamaz. Borcunuzu ödedikten sonra başvurabilirsiniz.');
+        }
 
         return view('customer.reservation.create', [
-            'facilities' => $facilities,
-            'customerClass' => $user->customerClass,
-            'weeks' => $weeks,
-            'campNights' => Reservation::CAMP_NIGHTS,
+            'facilities' => $this->wizardFacilities(),
+            'groups' => CustomerGroup::ordered()->get(),
+            'relations' => ReservationGuest::RELATIONS,
+            'bankAccounts' => Setting::get('bank_accounts', []),
+            'deposits' => [
+                'one_period' => Setting::number('deposit.one_period'),
+                'two_periods' => Setting::number('deposit.two_periods'),
+                'one_period_single' => Setting::number('deposit.one_period_single'),
+                'two_periods_single' => Setting::number('deposit.two_periods_single'),
+            ],
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Sihirbazın canlı fiyat özeti. Hesap tarayıcıda tekrarlanmaz; tek doğruluk
+     * kaynağı sunucudaki fiyat motorudur.
+     */
+    public function quote(Request $request)
     {
-        $user = Auth::user();
-
         $data = $request->validate([
-            'facility_id' => ['required', 'exists:facilities,id'],
-            'check_in' => ['required', 'date', 'after_or_equal:today'],
-            'check_out' => ['required', 'date', 'after:check_in'],
-            'guests' => ['required', 'integer', 'min:1', 'max:20'],
-            'note' => ['nullable', 'string', 'max:1000'],
+            'room_type_id' => ['required', 'integer', 'exists:room_types,id'],
+            'period_id' => ['required', 'integer', 'exists:periods,id'],
+            'second_period_id' => ['nullable', 'integer', 'exists:periods,id'],
+            'guests' => ['required', 'array', 'min:1', 'max:12'],
+            'guests.*.customer_group_id' => ['required', 'integer', 'exists:customer_groups,id'],
+            'guests.*.birth_date' => ['required', 'date'],
+            'guests.*.wants_meal' => ['nullable', 'boolean'],
+            'guests.*.full_name' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $customerClass = $user->customerClass;
-
-        if (! $customerClass) {
-            return back()->withErrors(['facility_id' => 'Müşteri sınıfınız tanımlı değil.']);
+        try {
+            $breakdown = $this->reservations->quote($this->reservations->buildPricingInput($data));
+        } catch (Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        $checkIn = Carbon::parse($data['check_in'])->startOfDay();
-        $checkOut = Carbon::parse($data['check_out'])->startOfDay();
+        return response()->json($breakdown->toArray());
+    }
 
-        if (! Reservation::isValidCampWeek($checkIn, $checkOut)) {
-            throw ValidationException::withMessages([
-                'check_in' => 'Rezervasyon yalnızca Pazartesi giriş – sonraki Pazartesi çıkış (1 haftalık kamp) olarak yapılabilir.',
-            ]);
+    public function store(StoreReservationRequest $request)
+    {
+        $data = $request->validated();
+
+        $documents = [];
+        foreach (array_values($request->file('guests', [])) as $index => $files) {
+            if (isset($files['document'])) {
+                $documents[$index] = $files['document'];
+            }
         }
 
-        if ($checkIn->lt(now()->startOfDay())) {
-            throw ValidationException::withMessages([
-                'check_in' => 'Geçmiş bir kamp haftası seçilemez.',
-            ]);
+        try {
+            $reservation = $this->reservations->create(
+                Auth::user(),
+                $data,
+                $documents,
+                $request->file('health_report'),
+            );
+        } catch (Throwable $e) {
+            return back()->withInput()->withErrors(['period_id' => $e->getMessage()]);
         }
 
-        if (! CampWeek::isOpen($checkIn)) {
-            throw ValidationException::withMessages([
-                'check_in' => 'Seçtiğiniz kamp haftası yönetici tarafından kapatılmış. Lütfen başka bir hafta seçin.',
-            ]);
+        // Peşinat: ya sanal POS'tan tahsil edilir ya da havale dekontu ile bildirilir.
+        if ($data['deposit_method'] === 'card') {
+            [$payment, $redirect] = $this->payments->startCardPayment(
+                $reservation,
+                'deposit',
+                (float) $reservation->deposit_amount,
+            );
+
+            return view('customer.payment.redirect', compact('payment', 'redirect'));
         }
 
-        $nights = Reservation::CAMP_NIGHTS;
-
-        $reservation = Reservation::create([
-            'user_id' => $user->id,
-            'facility_id' => $data['facility_id'],
-            'customer_class_id' => $customerClass->id,
-            'check_in' => $checkIn,
-            'check_out' => $checkOut,
-            'guests' => $data['guests'],
-            'note' => $data['note'] ?? null,
-            'total_price' => Reservation::calculatePrice($customerClass, $nights),
-            'status' => 'pending',
-        ]);
+        $this->payments->recordBankTransfer(
+            $reservation,
+            'deposit',
+            (float) $reservation->deposit_amount,
+            $request->file('deposit_receipt'),
+        );
 
         return redirect()->route('customer.reservations.show', $reservation)
-            ->with('success', 'Kamp rezervasyon talebiniz başarıyla oluşturuldu.');
+            ->with('success', 'Müracaatınız alındı. Peşinat dekontunuz incelendikten sonra değerlendirmeye alınacaktır.');
     }
 
     public function show(Reservation $reservation)
     {
         $this->authorizeOwner($reservation);
 
-        $reservation->load(['facility', 'customerClass', 'payment']);
+        $reservation->load([
+            'facility', 'roomType', 'period', 'secondPeriod',
+            'guests.customerGroup', 'payments',
+        ]);
 
-        return view('customer.reservation.show', compact('reservation'));
+        return view('customer.reservation.show', [
+            'reservation' => $reservation,
+            'bankAccounts' => Setting::get('bank_accounts', []),
+        ]);
+    }
+
+    /** Devre başlangıcına en az 10 gün varsa iptal edilebilir (Madde 8/11). */
+    public function cancel(Request $request, Reservation $reservation)
+    {
+        $this->authorizeOwner($reservation);
+
+        if (! $reservation->isCancellable()) {
+            return back()->with('error', 'Bu başvuru artık iptal edilemez. Devre başlangıcına en az '
+                . (int) Setting::number('cancellation.min_days_before', 10) . ' gün kalmış olmalıdır.');
+        }
+
+        $reservation->update([
+            'status' => 'cancelled',
+            'admin_note' => trim(($reservation->admin_note ? $reservation->admin_note . "\n" : '')
+                . 'Müşteri tarafından iptal edildi: ' . $request->input('reason', '-')),
+        ]);
+
+        return redirect()->route('customer.dashboard')
+            ->with('success', 'Başvurunuz iptal edildi. İade işlemleri için Dernek ile iletişime geçin.');
+    }
+
+    /**
+     * Sihirbaza gönderilen tesis / oda tipi / devre ağacı.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function wizardFacilities(): array
+    {
+        $facilities = Facility::active()->ordered()
+            ->with([
+                'roomTypes' => fn ($q) => $q->active()->ordered(),
+                'periods' => fn ($q) => $q->open()->upcoming()->ordered(),
+            ])
+            ->get();
+
+        return $facilities->map(function (Facility $facility) {
+            $periods = $facility->periods;
+
+            return [
+                'id' => $facility->id,
+                'name' => $facility->name,
+                'location' => $facility->location,
+                'description' => $facility->description,
+                'room_types' => $facility->roomTypes->map(fn ($rt) => [
+                    'id' => $rt->id,
+                    'name' => $rt->name,
+                    'kind' => $rt->kind,
+                    'bed_count' => $rt->bed_count,
+                    'capacity' => $rt->capacity(),
+                    'min_billed_persons' => $rt->min_billed_persons,
+                    'is_ground_floor' => $rt->is_ground_floor,
+                    'description' => $rt->description,
+                ])->values(),
+                'periods' => $periods->map(function (Period $p) use ($periods) {
+                    // Birleşen devreler: aynı grup içindeki bir sonraki devre
+                    $partner = $periods->first(fn (Period $o) => $p->canCombineWith($o));
+
+                    return [
+                        'id' => $p->id,
+                        'number' => $p->number,
+                        'label' => $p->label(),
+                        'date_range' => $p->dateRange(),
+                        'start_date' => $p->start_date->toDateString(),
+                        'end_date' => $p->end_date->toDateString(),
+                        'nights' => $p->nights,
+                        'is_discounted' => $p->is_discounted,
+                        'note' => $p->note,
+                        'combinable_with' => $partner?->id,
+                        'combinable_label' => $partner ? $partner->label() . ' · ' . $partner->dateRange() : null,
+                    ];
+                })->values(),
+            ];
+        })->values()->all();
     }
 
     private function authorizeOwner(Reservation $reservation): void

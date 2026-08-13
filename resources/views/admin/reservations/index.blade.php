@@ -1,82 +1,135 @@
-<x-layouts.admin title="Rezervasyonlar">
+<x-layouts.admin title="Başvurular">
 
-    <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-            <p class="section-label">Yönetim</p>
-            <h1 class="page-title mt-1">Rezervasyonlar</h1>
-            <p class="page-subtitle">Tüm rezervasyon taleplerini görüntüleyin ve yönetin.</p>
-        </div>
+    <div class="mb-6">
+        <p class="section-label">Yönetim</p>
+        <h1 class="page-title mt-1">Başvurular</h1>
+        <p class="page-subtitle">Müracaatları inceleyin, düzenleyin ve yer tahsisi yapın.</p>
     </div>
 
-    <form method="GET" class="surface mb-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <input type="text" name="q" value="{{ request('q') }}" placeholder="Müşteri adı veya TC No ile ara…" class="field-input sm:max-w-xs">
-        <select name="status" class="field-input sm:max-w-[180px]" onchange="this.form.submit()">
-            <option value="">Tüm durumlar</option>
-            @foreach (['pending' => 'Onay Bekliyor', 'approved' => 'Onaylandı', 'rejected' => 'Reddedildi', 'paid' => 'Ödendi', 'cancelled' => 'İptal Edildi'] as $val => $label)
-                <option value="{{ $val }}" @selected(request('status') === $val)>{{ $label }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="btn-secondary">Filtrele</button>
-        @if (request('q') || request('status'))
-            <a href="{{ route('admin.reservations.index') }}" class="text-sm font-medium text-stone-500 hover:text-navy-800">Temizle</a>
+    {{-- Durum sekmeleri --}}
+    @php
+        $tabs = [
+            '' => 'Tümü',
+            'pending' => 'İnceleniyor',
+            'approved' => 'Yer tahsis edildi',
+            'paid' => 'Ödendi',
+            'rejected' => 'Reddedildi',
+            'cancelled' => 'İptal',
+        ];
+    @endphp
+
+    <div class="mb-5 flex flex-wrap gap-2">
+        @foreach ($tabs as $value => $label)
+            @php $active = (string) request('status') === (string) $value; @endphp
+            <a href="{{ route('admin.reservations.index', array_filter(['status' => $value ?: null] + request()->except(['status', 'page']))) }}"
+               class="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all
+                      {{ $active ? 'bg-navy-900 text-white shadow-soft' : 'bg-white/70 text-navy-700 ring-1 ring-stone-200 hover:bg-white' }}">
+                {{ $label }}
+                @if ($value && isset($counts[$value]))
+                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $active ? 'bg-white/15' : 'bg-sand-100' }}">{{ $counts[$value] }}</span>
+                @endif
+            </a>
+        @endforeach
+    </div>
+
+    {{-- Filtreler --}}
+    <form method="GET" class="surface mb-6 flex flex-wrap items-end gap-3 p-4">
+        <input type="hidden" name="status" value="{{ request('status') }}">
+        <div class="min-w-[14rem] flex-1">
+            <label class="field-label">Ara</label>
+            <input type="text" name="q" value="{{ request('q') }}" placeholder="Başvuru no, ad, TC veya üyelik no" class="field-input">
+        </div>
+        <div>
+            <label class="field-label">Tesis</label>
+            <select name="facility" class="field-input">
+                <option value="">Tümü</option>
+                @foreach ($facilities as $facility)
+                    <option value="{{ $facility->id }}" @selected(request('facility') == $facility->id)>{{ $facility->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="field-label">Peşinat</label>
+            <select name="deposit" class="field-input">
+                <option value="">Tümü</option>
+                <option value="pending" @selected(request('deposit') === 'pending')>Bekliyor</option>
+                <option value="verified" @selected(request('deposit') === 'verified')>Doğrulandı</option>
+                <option value="rejected" @selected(request('deposit') === 'rejected')>Reddedildi</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-primary">Filtrele</button>
+        @if (request()->hasAny(['q', 'facility', 'deposit']))
+            <a href="{{ route('admin.reservations.index', ['status' => request('status')]) }}" class="btn-ghost">Temizle</a>
         @endif
     </form>
 
     <div class="surface overflow-hidden">
         @if ($reservations->isEmpty())
-            <div class="empty-state">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-sand-100 text-stone-400">
-                    <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
-                </div>
-                <p class="font-medium text-stone-500">Kriterlere uygun rezervasyon bulunamadı.</p>
-            </div>
+            <p class="px-6 py-16 text-center text-sm text-stone-400">Bu filtreye uyan başvuru bulunamadı.</p>
         @else
+            {{-- Masaüstü --}}
             <div class="hidden overflow-x-auto lg:block">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Müşteri</th>
-                            <th>TC No</th>
-                            <th>Sınıf</th>
-                            <th>Tesis</th>
-                            <th>Tarih</th>
-                            <th>Süre</th>
+                            <th>Başvuru</th>
+                            <th>Üye</th>
+                            <th>Tesis / Oda</th>
+                            <th>Devre</th>
+                            <th>Kişi</th>
                             <th>Tutar</th>
+                            <th>Peşinat</th>
                             <th>Durum</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($reservations as $r)
+                        @foreach ($reservations as $reservation)
                             <tr>
-                                <td class="font-semibold">{{ $r->user->name }}</td>
-                                <td class="text-stone-500">{{ $r->user->maskedTcNo() }}</td>
-                                <td>{{ $r->customerClass->name }}</td>
-                                <td>{{ $r->facility->name }}</td>
-                                <td>{{ $r->check_in->format('d.m.Y') }} - {{ $r->check_out->format('d.m.Y') }}</td>
-                                <td>{{ $r->nights() }} gece</td>
-                                <td class="font-medium">₺{{ number_format($r->total_price, 0, ',', '.') }}</td>
-                                <td><x-status-badge :status="$r->status" /></td>
-                                <td><a href="{{ route('admin.reservations.show', $r) }}" class="btn-ghost !px-3 !py-1.5 text-xs">İncele</a></td>
+                                <td class="font-mono text-xs">{{ $reservation->code }}</td>
+                                <td>
+                                    <p class="font-medium">{{ $reservation->user->name }}</p>
+                                    <p class="text-xs text-stone-500">{{ $reservation->user->membership_no ?? $reservation->user->maskedTcNo() }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ $reservation->facility->name }}</p>
+                                    <p class="text-xs text-stone-500">{{ $reservation->roomType->name }}</p>
+                                </td>
+                                <td class="text-xs">
+                                    {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->number }}. @endif
+                                    <p class="text-stone-500">{{ $reservation->start_date->format('d.m.Y') }}</p>
+                                </td>
+                                <td>{{ $reservation->guests_count }}</td>
+                                <td><x-money :value="$reservation->total_price" class="font-semibold" /></td>
+                                <td><x-status-badge :status="$reservation->deposit_status" /></td>
+                                <td><x-status-badge :status="$reservation->status" /></td>
+                                <td class="text-right">
+                                    <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-ghost !px-3 !py-1.5 text-xs">Aç</a>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
 
+            {{-- Mobil --}}
             <ul class="divide-y divide-stone-100 lg:hidden">
-                @foreach ($reservations as $r)
+                @foreach ($reservations as $reservation)
                     <li class="p-4">
                         <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="font-semibold text-navy-900">{{ $r->user->name }}</p>
-                                <p class="text-xs text-stone-500">{{ $r->user->maskedTcNo() }} · {{ $r->customerClass->name }}</p>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-navy-900">{{ $reservation->user->name }}</p>
+                                <p class="text-xs text-stone-500">
+                                    {{ $reservation->code }} · {{ $reservation->facility->name }}<br>
+                                    {{ $reservation->roomType->name }} · {{ $reservation->period->label() }}
+                                </p>
                             </div>
-                            <x-status-badge :status="$r->status" />
+                            <x-status-badge :status="$reservation->status" />
                         </div>
-                        <p class="mt-2 text-sm text-stone-600">{{ $r->facility->name }}</p>
-                        <p class="text-xs text-stone-400">{{ $r->check_in->format('d.m.Y') }} - {{ $r->check_out->format('d.m.Y') }} · ₺{{ number_format($r->total_price, 0, ',', '.') }}</p>
-                        <a href="{{ route('admin.reservations.show', $r) }}" class="btn-secondary mt-3 w-full">İncele</a>
+                        <div class="mt-3 flex items-center justify-between">
+                            <x-money :value="$reservation->total_price" class="font-semibold text-navy-900" />
+                            <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-secondary !px-3 !py-1.5 text-xs">Aç</a>
+                        </div>
                     </li>
                 @endforeach
             </ul>
