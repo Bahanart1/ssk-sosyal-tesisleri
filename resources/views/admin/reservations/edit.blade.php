@@ -36,8 +36,8 @@
 
                     {{-- Konaklama --}}
                     <div class="surface overflow-hidden">
-                        <div class="border-b border-stone-100/80 px-6 py-4">
-                            <h2 class="font-display text-lg font-semibold text-navy-900">Konaklama</h2>
+                        <div class="border-b border-line px-6 py-4">
+                            <h2 class="font-display text-lg font-semibold text-ink">Konaklama</h2>
                         </div>
                         <div class="grid gap-5 p-6 sm:grid-cols-2">
                             <div class="sm:col-span-2">
@@ -61,7 +61,7 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="field-label">İkinci devre <span class="font-normal text-stone-400">(opsiyonel)</span></label>
+                                <label class="field-label">İkinci devre <span class="font-normal text-ink-subtle">(opsiyonel)</span></label>
                                 <select name="second_period_id" class="field-input">
                                     <option value="">Yok</option>
                                     @foreach ($periods as $period)
@@ -77,22 +77,22 @@
 
                     {{-- Kişiler --}}
                     <div class="surface overflow-hidden">
-                        <div class="border-b border-stone-100/80 px-6 py-4">
-                            <h2 class="font-display text-lg font-semibold text-navy-900">Konaklayacak kişiler</h2>
-                            <p class="text-xs text-stone-500">Grup ve doğum tarihi değişiklikleri ücreti doğrudan etkiler.</p>
+                        <div class="border-b border-line px-6 py-4">
+                            <h2 class="font-display text-lg font-semibold text-ink">Konaklayacak kişiler</h2>
+                            <p class="text-xs text-ink-muted">Grup ve doğum tarihi değişiklikleri ücreti doğrudan etkiler.</p>
                         </div>
 
-                        <div class="divide-y divide-stone-100">
+                        <div class="divide-y divide-line">
                             @foreach ($reservation->guests as $guest)
                                 <div class="p-5" :class="removed.includes({{ $guest->id }}) ? 'opacity-40' : ''">
                                     <div class="mb-3 flex items-center justify-between">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                                             {{ $loop->first ? 'Başvuru sahibi' : $loop->iteration . '. kişi' }}
                                         </p>
                                         <div class="flex items-center gap-3">
                                             @if ($guest->id_document_path)
                                                 <a href="{{ route('documents.identity', $guest) }}" target="_blank" rel="noopener"
-                                                   class="text-xs font-semibold text-teal-700 hover:text-teal-800">Kimlik belgesi</a>
+                                                   class="text-xs font-semibold text-accent-700 dark:text-accent-300 hover:text-accent-800 dark:hover:text-accent-200">Kimlik belgesi</a>
                                             @else
                                                 <span class="badge-red !py-0.5 !text-[10px]">Belge eksik</span>
                                             @endif
@@ -100,7 +100,7 @@
                                                 <button type="button"
                                                         @click="removed.includes({{ $guest->id }}) ? removed = removed.filter(i => i !== {{ $guest->id }}) : removed.push({{ $guest->id }})"
                                                         class="text-xs font-semibold"
-                                                        :class="removed.includes({{ $guest->id }}) ? 'text-teal-700' : 'text-red-600'"
+                                                        :class="removed.includes({{ $guest->id }}) ? 'text-accent-700 dark:text-accent-300' : 'text-red-600'"
                                                         x-text="removed.includes({{ $guest->id }}) ? 'Geri al' : 'Listeden çıkar'"></button>
                                             @endunless
                                         </div>
@@ -141,12 +141,12 @@
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <label class="sm:col-span-2 flex cursor-pointer items-center gap-2.5 rounded-lg bg-sand-50 px-3 py-2.5">
+                                        <label class="sm:col-span-2 flex cursor-pointer items-center gap-2.5 rounded-lg bg-surface-alt px-3 py-2.5">
                                             <input type="hidden" name="guests[{{ $guest->id }}][wants_meal]" value="0" :disabled="removed.includes({{ $guest->id }})">
                                             <input type="checkbox" name="guests[{{ $guest->id }}][wants_meal]" value="1" :disabled="removed.includes({{ $guest->id }})"
                                                    @checked(old("guests.{$guest->id}.wants_meal", $guest->wants_meal))
-                                                   class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
-                                            <span class="text-xs text-navy-800">0-5 yaş grubu için yemek servisi talep edildi (ücretin %40'ı)</span>
+                                                   class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
+                                            <span class="text-xs text-ink">0-5 yaş grubu için yemek servisi talep edildi (ücretin %40'ı)</span>
                                         </label>
                                     </div>
                                 </div>
@@ -156,8 +156,8 @@
 
                     {{-- Ücret düzeltmeleri --}}
                     <div class="surface overflow-hidden">
-                        <div class="border-b border-stone-100/80 px-6 py-4">
-                            <h2 class="font-display text-lg font-semibold text-navy-900">Ücret düzeltmeleri</h2>
+                        <div class="border-b border-line px-6 py-4">
+                            <h2 class="font-display text-lg font-semibold text-ink">Ücret düzeltmeleri</h2>
                         </div>
                         <div class="grid gap-5 p-6 sm:grid-cols-2">
                             <div>
@@ -195,21 +195,21 @@
                 {{-- Yan panel: mevcut hesap --}}
                 <div class="space-y-6">
                     <div class="surface overflow-hidden lg:sticky lg:top-6">
-                        <div class="border-b border-stone-100/80 px-5 py-3.5">
-                            <h2 class="font-display text-base font-semibold text-navy-900">Mevcut hesap</h2>
-                            <p class="text-[11px] text-stone-500">Kaydettiğinizde yeniden hesaplanır.</p>
+                        <div class="border-b border-line px-5 py-3.5">
+                            <h2 class="font-display text-base font-semibold text-ink">Mevcut hesap</h2>
+                            <p class="text-[11px] text-ink-muted">Kaydettiğinizde yeniden hesaplanır.</p>
                         </div>
 
                         @if ($preview)
                             @foreach ($preview['segments'] as $segment)
-                                <div class="border-b border-stone-100 px-5 py-3">
-                                    <p class="text-xs font-semibold text-navy-900">{{ $segment['period_label'] }} · {{ $segment['nights'] }} gün</p>
-                                    <p class="text-[11px] text-stone-500">{{ $segment['tariff_name'] }}</p>
+                                <div class="border-b border-line px-5 py-3">
+                                    <p class="text-xs font-semibold text-ink">{{ $segment['period_label'] }} · {{ $segment['nights'] }} gün</p>
+                                    <p class="text-[11px] text-ink-muted">{{ $segment['tariff_name'] }}</p>
                                     <div class="mt-2 space-y-1">
                                         @foreach ($segment['lines'] as $line)
                                             <div class="flex justify-between text-[11px]">
-                                                <span class="truncate text-stone-500">{{ $line['name'] ?: 'Kişi' }}</span>
-                                                <x-money :value="$line['unit_price']" zero="Ücretsiz" class="text-stone-700" />
+                                                <span class="truncate text-ink-muted">{{ $line['name'] ?: 'Kişi' }}</span>
+                                                <x-money :value="$line['unit_price']" zero="Ücretsiz" class="text-ink" />
                                             </div>
                                         @endforeach
                                         @if ($segment['minimum_applied'])
@@ -219,7 +219,7 @@
                                             </div>
                                         @endif
                                         @if ($segment['empty_bed_total'] > 0)
-                                            <div class="flex justify-between text-[11px] text-stone-500">
+                                            <div class="flex justify-between text-[11px] text-ink-muted">
                                                 <span>{{ $segment['empty_bed_count'] }} boş yatak</span>
                                                 <x-money :value="$segment['empty_bed_total']" />
                                             </div>
@@ -228,27 +228,27 @@
                                 </div>
                             @endforeach
 
-                            <div class="divide-y divide-stone-100 text-sm">
-                                <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Konaklama</span><x-money :value="$preview['accommodation_total']" class="font-medium text-navy-900" /></div>
+                            <div class="divide-y divide-line text-sm">
+                                <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Konaklama</span><x-money :value="$preview['accommodation_total']" class="font-medium text-ink" /></div>
                                 @if ($preview['empty_bed_total'] > 0)
-                                    <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Boş yatak</span><x-money :value="$preview['empty_bed_total']" class="font-medium text-navy-900" /></div>
+                                    <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Boş yatak</span><x-money :value="$preview['empty_bed_total']" class="font-medium text-ink" /></div>
                                 @endif
                                 @if ($preview['adjustment_amount'] != 0)
-                                    <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Düzeltme</span><x-money :value="$preview['adjustment_amount']" class="font-medium text-navy-900" /></div>
+                                    <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Düzeltme</span><x-money :value="$preview['adjustment_amount']" class="font-medium text-ink" /></div>
                                 @endif
-                                <div class="flex items-center justify-between bg-navy-900 px-5 py-3.5 text-white">
+                                <div class="flex items-center justify-between bg-chrome px-5 py-3.5 text-white">
                                     <span class="text-sm font-semibold">Toplam</span>
                                     <x-money :value="$preview['total']" class="font-display text-xl font-semibold" />
                                 </div>
-                                <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Peşinat</span><x-money :value="$preview['deposit_amount']" class="font-medium text-navy-900" /></div>
-                                <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-navy-900" /></div>
-                                <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-stone-600">Kalan bakiye</span><x-money :value="max(0, $preview['total'] - $reservation->paidTotal())" class="font-semibold text-navy-900" /></div>
+                                <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Peşinat</span><x-money :value="$preview['deposit_amount']" class="font-medium text-ink" /></div>
+                                <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-ink" /></div>
+                                <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-ink-muted">Kalan bakiye</span><x-money :value="max(0, $preview['total'] - $reservation->paidTotal())" class="font-semibold text-ink" /></div>
                             </div>
                         @else
-                            <p class="px-5 py-8 text-center text-sm text-stone-400">Hesap yapılamadı. Devre ve tarife eşleşmesini kontrol edin.</p>
+                            <p class="px-5 py-8 text-center text-sm text-ink-subtle">Hesap yapılamadı. Devre ve tarife eşleşmesini kontrol edin.</p>
                         @endif
 
-                        <div class="space-y-2 border-t border-stone-100 p-5">
+                        <div class="space-y-2 border-t border-line p-5">
                             <button type="submit" @click="$refs.action.value = 'save'" class="btn-secondary w-full">
                                 Kaydet ve Yeniden Hesapla
                             </button>
@@ -258,8 +258,8 @@
                         </div>
                     </div>
 
-                    <div class="alert-soft border-teal-100 bg-teal-50/70 text-teal-900 ring-teal-100">
-                        <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
+                    <div class="alert-soft border-accent-200 dark:border-accent-800 bg-accent-50 dark:bg-accent-900/30 text-accent-900 dark:text-accent-100 ring-accent-200 dark:ring-accent-800">
+                        <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
                         <p class="text-xs leading-relaxed">
                             Onayladığınızda bakiye son ödeme tarihi, tahsis bildiriminden itibaren 15 gün olarak
                             belirlenir; devre başlangıcına 15 günden az kalmışsa devre başlangıcı esas alınır.
@@ -279,8 +279,8 @@
             <div x-show="confirmApprove" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
                 <div class="modal-scrim" @click="confirmApprove = false"></div>
                 <div class="modal-panel" x-transition>
-                    <h3 class="font-display text-lg font-semibold text-navy-900">Yer tahsisini onayla</h3>
-                    <p class="mt-2 text-sm text-stone-500">
+                    <h3 class="font-display text-lg font-semibold text-ink">Yer tahsisini onayla</h3>
+                    <p class="mt-2 text-sm text-ink-muted">
                         Değişiklikler kaydedilecek, ücret yeniden hesaplanacak ve başvuru sahibine bakiye ödemesi
                         için açılacak. Devam etmek istiyor musunuz?
                     </p>

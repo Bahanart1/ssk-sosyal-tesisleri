@@ -84,6 +84,26 @@ Tüm bu kurallar `tests/Feature/PricingTest.php` içinde yayımlanan tablolara k
 
 ---
 
+## Üye paneli
+
+| Sekme | İçerik |
+|---|---|
+| Panelim | Aidat durumu, başvuru sayısı, bekleyen bakiye; yaklaşan konaklama ve son başvurular |
+| Başvurularım | Tüm müracaatlar, duruma göre süzme, bakiye ve son ödeme tarihi |
+| Aidatlarım | Yıl bazında tahakkuk/ödeme geçmişi, toplam borç, ödeme için banka hesapları |
+| Hesabım | İletişim bilgileri ve şifre değiştirme |
+
+Üye yalnızca **telefon, e-posta ve adres** bilgilerini güncelleyebilir. Ad soyad, TC kimlik
+numarası, üyelik numarası, müşteri grubu, hesap durumu ve aidat kayıtları Dernek tarafından
+yönetilir; bu alanlar üye tarafından değiştirilemez (form dışından gönderilseler dahi
+yok sayılır — `tests/Feature/ReservationFlowTest.php` bunu doğrular). Şifre değişikliği
+mevcut şifrenin doğrulanmasını gerektirir.
+
+Aidat tahsilatı Dernek tarafından kaydedilir; üye paneli yalnızca bilgilendirir ve ödeme
+için banka hesaplarını gösterir. III. Grup üyeler bu sekmede "aidattan muaf" bilgisini görür.
+
+---
+
 ## Ödeme
 
 Peşinat ve bakiye iki kanaldan tahsil edilir:
@@ -122,14 +142,88 @@ sahibine ve yöneticilere, her istekte yetki kontrolünden geçen route'lar üze
 | Genel Bakış | Bekleyen talepler, tahsilat, devre doluluğu |
 | Başvurular | Filtreleme, detay, **düzenleme ve yer tahsisi onayı** |
 | Ödemeler | Havale dekontlarının doğrulanması, POS işlemlerinin izlenmesi |
-| Devreler | Devre tarihleri, tarife ataması, başvuruya açma/kapatma |
+| Devreler | Devre tarihleri, tarife ataması, başvuruya açma/kapatma; devre kartı |
 | Tarifeler | Tablo 1 ve Tablo 2 ücretlerinin düzenlenmesi |
 | Tesis & Odalar | Oda tipleri, yatak sayıları, envanter |
-| Üyeler | Giriş bilgileri, grup ataması, aidat durumu |
-| Parametreler | Peşinat, müracaat farkı kademeleri, çocuk oranları, banka hesapları |
+| Üyeler | Üye kartı: künye, aidat geçmişi, başvurular ve ödemeler |
+| Aidatlar | Yıllık tahakkuk ve tahsilat defteri |
+| Parametreler | Peşinat, müracaat farkı kademeleri, çocuk oranları, aidat tutarı, banka hesapları |
 
-Aidat borcu bulunan üyelerin müracaat formu işleme alınmaz (Madde 5/10); yönetici aidatı
-"ödendi" olarak işaretleyerek başvuru hakkını açar.
+### Devre kartı
+
+Devreler listesinde bir devreye tıklandığında o devrenin kartı açılır:
+
+- **Yer tahsis edilen üyeler** — onaylanmış ve ödemesi tamamlanmış başvurular; kişi sayısı,
+  tutar ve kalan bakiyeyle birlikte
+- **İnceleme bekleyen başvurular** — talep gönderilmiş, karar verilmemiş olanlar; peşinat
+  durumu ve üyenin aidat durumu yan yana, doğrudan "Değerlendir" bağlantısıyla
+- **Konaklayacak kişiler** — tahsis edilen başvurulardaki kişilerin tamamı; tesise giriş
+  listesi olarak kullanılır (TC no, doğum tarihi, yaş grubu, kimlik belgesi)
+- **Oda tipi dağılımı** — envanter, tahsis edilen, bekleyen ve kalan ünite sayısı
+
+Birleşik devre başvuruları her iki devrenin kartında da görünür.
+
+### Üyelik aidatı
+
+Aidat, üye başına **yıl yıl tahakkuk** kaydı olarak tutulur (`membership_dues`): tutar,
+durum (borçlu / ödendi / muaf), ödeme tarihi, yöntem ve makbuz no. Böylece "hangi üye
+hangi yılı ödedi" sorusu tek ekrandan yanıtlanır.
+
+- **Aidatlar** ekranı seçilen yılın tahakkuk, tahsilat ve kalan borç özetini gösterir;
+  tek tıkla tahsilat işaretlenir, toplu tahakkuk açılır.
+- **Üye kartı** (Üyeler → bir üyeye tıklayın) o üyenin tüm yıllarını, başvurularını ve
+  ödemelerini birlikte gösterir.
+- İçinde bulunulan yıl dahil ödenmemiş tahakkuku olan üyenin müracaat formu işleme
+  alınmaz (Madde 5/10). Vadesi gelmemiş (gelecek yıl) tahakkuk borç sayılmaz.
+- III. Grup (dernek üyesi olmayan misafirler) aidattan muaftır.
+- Üye, kendi panelinde borçlu olduğu yılları ve toplam tutarı görür.
+
+### Genel bakış ekranı
+
+Tahsilat seyri, devre doluluğu, müşteri grubu ve oda tipi dağılımı sunucuda üretilen
+satır içi SVG/HTML grafiklerle çizilir — harici grafik kütüphanesi yoktur. Her grafiğin
+başlığında **Grafik / Tablo** değiştiricisi bulunur, böylece aynı veri sayısal olarak da
+okunabilir.
+
+Renkler ölçülerek seçilmiştir, göz kararıyla değil:
+
+- Seri rengi — açık modda `#2f6cb0` (5.4:1), koyu modda `#5b9bd8` (5.6:1)
+- Sıralı rampa yalnızca **sıralı** veride kullanılır (I./II./III. Grup); sıra rengin
+  açıklığıyla taşınır. Her iki mod için ayrı ayrı doğrulanmıştır (monoton açıklık,
+  adım aralığı ≥ 0.06, açık uç ≥ 2:1)
+- Devre doluluğu gibi **tek serili** grafiklerde tüm sütunlar aynı renktedir: yüksekliğin
+  zaten gösterdiği değeri renkle ikinci kez kodlamak bilgi taşımaz
+- Durum renkleri (ödendi / borçlu / muaf) ayrılmış anlamdadır, daima etiketle birlikte
+  kullanılır ve seri renkleriyle karıştırılmaz
+
+---
+
+## Tema ve renk sistemi
+
+Arayüz **çelik mavisi + soğuk nötr gri** üzerine kuruludur ve **açık/koyu tema**
+destekler. Renkler iki katmanlıdır:
+
+| Katman | Nerede tanımlı | Örnek |
+|---|---|---|
+| Sabit kimlik ölçekleri | `tailwind.config.js` | `accent-600`, `navy-900` |
+| Semantik tokenlar | `resources/css/app.css` | `bg-surface`, `text-ink`, `border-line` |
+
+Karanlık mod tek yerden döner: `<html class="dark">` eklendiğinde `app.css` içindeki
+CSS değişkenleri koyu değerleriyle değişir. Bu nedenle arayüzde her sınıfa ayrı bir
+`dark:` karşılığı yazmak gerekmez — `bg-surface` her iki modda doğru zemini verir.
+
+Tema seçimi `localStorage`'a yazılır; kullanıcı hiç seçim yapmadıysa işletim sistemi
+ayarı izlenir. Tercih, sayfa boyanmadan önce `partials/head.blade.php` içindeki küçük
+bir betikle uygulanır, böylece açılışta tema titremesi olmaz.
+
+### Demo veri (isteğe bağlı)
+
+Grafiklerin dolu görünmesi için örnek başvuru üreten seeder varsayılan seed'e **dahil
+değildir**; yalnızca tanıtım ortamında çalıştırın:
+
+```bash
+php artisan db:seed --class=DemoReservationSeeder
+```
 
 ---
 

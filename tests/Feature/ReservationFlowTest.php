@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CustomerGroup;
 use App\Models\Facility;
+use App\Models\MembershipDue;
 use App\Models\Payment;
 use App\Models\Period;
 use App\Models\Reservation;
@@ -57,7 +58,6 @@ class ReservationFlowTest extends TestCase
             'password' => Hash::make('sifre123'),
             'role' => 'customer',
             'customer_group_id' => $this->groupId('I'),
-            'dues_paid_year' => 2026,
             'is_active' => true,
         ]);
     }
@@ -127,9 +127,20 @@ class ReservationFlowTest extends TestCase
     // Müracaat koşulları
     // ---------------------------------------------------------------
 
+    /** Üyeye vadesi gelmiş, ödenmemiş bir aidat tahakkuku açar. */
+    private function giveDuesDebt(User $member, int $year = 2025, float $amount = 2500): MembershipDue
+    {
+        return MembershipDue::create([
+            'user_id' => $member->id,
+            'year' => $year,
+            'amount' => $amount,
+            'status' => 'unpaid',
+        ]);
+    }
+
     public function test_aidat_borcu_olan_uye_basvuru_formuna_giremez(): void
     {
-        $this->member->update(['dues_paid_year' => 2024]);
+        $this->giveDuesDebt($this->member);
 
         $this->actingAs($this->member)
             ->get(route('customer.reservations.create'))
@@ -139,7 +150,7 @@ class ReservationFlowTest extends TestCase
 
     public function test_aidat_borcu_olan_uyenin_basvurusu_reddedilir(): void
     {
-        $this->member->update(['dues_paid_year' => null]);
+        $this->giveDuesDebt($this->member);
 
         $this->actingAs($this->member)
             ->post(route('customer.reservations.store'), $this->payload())
@@ -148,9 +159,30 @@ class ReservationFlowTest extends TestCase
         $this->assertSame(0, Reservation::count());
     }
 
+    public function test_odenmis_aidat_basvuruyu_engellemez(): void
+    {
+        $due = $this->giveDuesDebt($this->member);
+        $due->update(['status' => 'paid', 'paid_at' => '2025-02-10', 'method' => 'bank_transfer']);
+
+        $this->actingAs($this->member)
+            ->get(route('customer.reservations.create'))
+            ->assertOk();
+    }
+
+    public function test_gelecek_yilin_aidati_basvuruyu_engellemez(): void
+    {
+        // Vadesi gelmemiş tahakkuk borç sayılmaz (Madde 5/10: içinde bulunulan yıl dahil)
+        $this->giveDuesDebt($this->member, year: 2027);
+
+        $this->actingAs($this->member)
+            ->get(route('customer.reservations.create'))
+            ->assertOk();
+    }
+
     public function test_uye_olmayan_misafir_aidat_kosulundan_muaftir(): void
     {
-        $this->member->update(['customer_group_id' => $this->groupId('III'), 'dues_paid_year' => null]);
+        $this->member->update(['customer_group_id' => $this->groupId('III')]);
+        $this->giveDuesDebt($this->member);
 
         $this->actingAs($this->member)
             ->get(route('customer.reservations.create'))
@@ -247,6 +279,142 @@ class ReservationFlowTest extends TestCase
     }
 
     // ---------------------------------------------------------------
+    // Üye paneli
+    // ---------------------------------------------------------------
+
+    public function test_uye_kendi_aidat_gecmisini_gorur(): void
+    {
+        $this->giveDuesDebt($this->member, year: 2026, amount: 2500);
+        $paid = $this->giveDuesDebt($this->member, year: 2025, amount: 2000);
+        $paid->update(['status' => 'paid', 'paid_at' => '2025-02-10', 'method' => 'bank_transfer']);
+
+        $this->actingAs($this->member)
+            ->get(route('customer.dues.index'))
+            ->assertOk()
+            ->assertSee('Borçlu')
+            ->assertSee('2026')
+            ->assertSee('2025');
+    }
+
+    public function test_uye_baska_uyenin_aidatini_gormez(): void
+    {
+        $other = User::create([
+            'name' => 'Başka Üye',
+            'tc_no' => '99988877766',
+            'membership_no' => 'U-9999',
+            'password' => Hash::make('sifre123'),
+            'role' => 'customer',
+            'customer_group_id' => $this->groupId('I'),
+            'is_active' => true,
+        ]);
+        MembershipDue::create(['user_id' => $other->id, 'year' => 2026, 'amount' => 7777, 'status' => 'unpaid']);
+
+        $this->actingAs($this->member)
+            ->get(route('customer.dues.index'))
+            ->assertOk()
+            ->assertDontSee('7.777');
+    }
+
+    public function test_uye_iletisim_bilgilerini_guncelleyebilir(): void
+    {
+        $this->actingAs($this->member)
+            ->put(route('customer.profile.update'), [
+                'phone' => '0555 000 11 22',
+                'email' => 'yeni@example.com',
+                'address' => 'Çankaya / Ankara',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->member->refresh();
+
+        $this->assertSame('0555 000 11 22', $this->member->phone);
+        $this->assertSame('yeni@example.com', $this->member->email);
+    }
+
+    public function test_uye_grubunu_veya_uyelik_numarasini_degistiremez(): void
+    {
+        $originalGroup = $this->member->customer_group_id;
+
+        $this->actingAs($this->member)->put(route('customer.profile.update'), [
+            'phone' => '0555 000 11 22',
+            // Bu alanlar Dernek tarafından yönetilir; formda olmasalar da gönderilebilirler
+            'customer_group_id' => $this->groupId('III'),
+            'membership_no' => 'HACKED',
+            'tc_no' => '00000000000',
+            'is_active' => false,
+            'name' => 'Değiştirilmiş Ad',
+        ])->assertRedirect();
+
+        $this->member->refresh();
+
+        $this->assertSame($originalGroup, $this->member->customer_group_id);
+        $this->assertSame('U-1042', $this->member->membership_no);
+        $this->assertSame('12345678901', $this->member->tc_no);
+        $this->assertSame('Ahmet Yılmaz', $this->member->name);
+        $this->assertTrue($this->member->is_active);
+    }
+
+    public function test_uye_mevcut_sifresini_dogrulamadan_sifre_degistiremez(): void
+    {
+        $this->actingAs($this->member)
+            ->put(route('customer.profile.password'), [
+                'current_password' => 'yanlis-sifre',
+                'password' => 'yeni-sifre-123',
+                'password_confirmation' => 'yeni-sifre-123',
+            ])
+            ->assertSessionHasErrors('current_password', null, 'password');
+
+        $this->assertTrue(Hash::check('sifre123', $this->member->refresh()->password));
+    }
+
+    public function test_uye_sifresini_degistirebilir(): void
+    {
+        $this->actingAs($this->member)
+            ->put(route('customer.profile.password'), [
+                'current_password' => 'sifre123',
+                'password' => 'yeni-sifre-123',
+                'password_confirmation' => 'yeni-sifre-123',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertTrue(Hash::check('yeni-sifre-123', $this->member->refresh()->password));
+    }
+
+    public function test_basvuru_listesi_yalnizca_uyenin_kendi_basvurularini_gosterir(): void
+    {
+        $mine = $this->createReservation();
+
+        $other = User::create([
+            'name' => 'Başka Üye',
+            'tc_no' => '99988877755',
+            'password' => Hash::make('sifre123'),
+            'role' => 'customer',
+            'customer_group_id' => $this->groupId('I'),
+            'is_active' => true,
+        ]);
+        $theirs = Reservation::create([
+            'code' => '2026-999999',
+            'user_id' => $other->id,
+            'facility_id' => $mine->facility_id,
+            'room_type_id' => $mine->room_type_id,
+            'period_id' => $mine->period_id,
+            'start_date' => $mine->start_date,
+            'end_date' => $mine->end_date,
+            'nights' => 6,
+            'status' => 'pending',
+            'application_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($this->member)
+            ->get(route('customer.reservations.index'))
+            ->assertOk()
+            ->assertSee($mine->code)
+            ->assertDontSee($theirs->code);
+    }
+
+    // ---------------------------------------------------------------
     // Belge erişimi
     // ---------------------------------------------------------------
 
@@ -261,7 +429,6 @@ class ReservationFlowTest extends TestCase
             'password' => Hash::make('sifre123'),
             'role' => 'customer',
             'customer_group_id' => $this->groupId('I'),
-            'dues_paid_year' => 2026,
             'is_active' => true,
         ]);
 

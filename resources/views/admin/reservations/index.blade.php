@@ -22,11 +22,10 @@
         @foreach ($tabs as $value => $label)
             @php $active = (string) request('status') === (string) $value; @endphp
             <a href="{{ route('admin.reservations.index', array_filter(['status' => $value ?: null] + request()->except(['status', 'page']))) }}"
-               class="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all
-                      {{ $active ? 'bg-navy-900 text-white shadow-soft' : 'bg-white/70 text-navy-700 ring-1 ring-stone-200 hover:bg-white' }}">
+               class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all {{ $active ? 'bg-accent-600 text-white' : 'bg-surface text-ink ring-1 ring-line hover:bg-surface-alt' }}">
                 {{ $label }}
                 @if ($value && isset($counts[$value]))
-                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $active ? 'bg-white/15' : 'bg-sand-100' }}">{{ $counts[$value] }}</span>
+                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $active ? 'bg-white/15' : 'bg-surface-sunken' }}">{{ $counts[$value] }}</span>
                 @endif
             </a>
         @endforeach
@@ -65,7 +64,7 @@
 
     <div class="surface overflow-hidden">
         @if ($reservations->isEmpty())
-            <p class="px-6 py-16 text-center text-sm text-stone-400">Bu filtreye uyan başvuru bulunamadı.</p>
+            <p class="px-6 py-16 text-center text-sm text-ink-subtle">Bu filtreye uyan başvuru bulunamadı.</p>
         @else
             {{-- Masaüstü --}}
             <div class="hidden overflow-x-auto lg:block">
@@ -83,21 +82,21 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-stone-100">
+                    <tbody class="divide-y divide-line">
                         @foreach ($reservations as $reservation)
                             <tr>
                                 <td class="font-mono text-xs">{{ $reservation->code }}</td>
                                 <td>
                                     <p class="font-medium">{{ $reservation->user->name }}</p>
-                                    <p class="text-xs text-stone-500">{{ $reservation->user->membership_no ?? $reservation->user->maskedTcNo() }}</p>
+                                    <p class="text-xs text-ink-muted">{{ $reservation->user->membership_no ?? $reservation->user->maskedTcNo() }}</p>
                                 </td>
                                 <td>
                                     <p>{{ $reservation->facility->name }}</p>
-                                    <p class="text-xs text-stone-500">{{ $reservation->roomType->name }}</p>
+                                    <p class="text-xs text-ink-muted">{{ $reservation->roomType->name }}</p>
                                 </td>
                                 <td class="text-xs">
                                     {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->number }}. @endif
-                                    <p class="text-stone-500">{{ $reservation->start_date->format('d.m.Y') }}</p>
+                                    <p class="text-ink-muted">{{ $reservation->start_date->format('d.m.Y') }}</p>
                                 </td>
                                 <td>{{ $reservation->guests_count }}</td>
                                 <td><x-money :value="$reservation->total_price" class="font-semibold" /></td>
@@ -113,13 +112,13 @@
             </div>
 
             {{-- Mobil --}}
-            <ul class="divide-y divide-stone-100 lg:hidden">
+            <ul class="divide-y divide-line lg:hidden">
                 @foreach ($reservations as $reservation)
                     <li class="p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="font-semibold text-navy-900">{{ $reservation->user->name }}</p>
-                                <p class="text-xs text-stone-500">
+                                <p class="font-semibold text-ink">{{ $reservation->user->name }}</p>
+                                <p class="text-xs text-ink-muted">
                                     {{ $reservation->code }} · {{ $reservation->facility->name }}<br>
                                     {{ $reservation->roomType->name }} · {{ $reservation->period->label() }}
                                 </p>
@@ -127,7 +126,7 @@
                             <x-status-badge :status="$reservation->status" />
                         </div>
                         <div class="mt-3 flex items-center justify-between">
-                            <x-money :value="$reservation->total_price" class="font-semibold text-navy-900" />
+                            <x-money :value="$reservation->total_price" class="font-semibold text-ink" />
                             <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-secondary !px-3 !py-1.5 text-xs">Aç</a>
                         </div>
                     </li>

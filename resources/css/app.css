@@ -2,16 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+|--------------------------------------------------------------------------
+| Renk tokenları
+|--------------------------------------------------------------------------
+| Karanlık mod tek yerden çevrilir: <html class="dark">. Arayüzdeki sınıflar
+| (bg-surface, text-ink, border-line …) bu değişkenlere bağlıdır.
+|
+| Grafik renkleri her iki mod için ayrı ayrı doğrulanmıştır:
+| tek hue'lu sıralı rampa, monoton açıklık, açık uç ≥ 2:1, seri ≥ 3:1.
+*/
 @layer base {
     :root {
-        --brand-navy: #0a1728;
-        --brand-teal: #e8734a;
-        --surface: #ffffff;
-        --canvas: #fbede0;
-        --ink: #0a1728;
-        --muted: #7c6a5c;
-        --radius: 1.25rem;
-        --ring: rgba(232, 115, 74, 0.35);
+        color-scheme: light;
+
+        --c-canvas:        245 247 250;   /* #f5f7fa */
+        --c-surface:       255 255 255;   /* #ffffff */
+        --c-surface-alt:   248 250 252;   /* #f8fafc */
+        --c-surface-sunken: 241 245 249;  /* #f1f5f9 */
+
+        --c-line:          226 232 240;   /* #e2e8f0 */
+        --c-line-soft:     241 245 249;   /* #f1f5f9 */
+
+        --c-ink:            15  39  64;   /* #0f2740 — 15.2:1 */
+        --c-ink-muted:      91 107 127;   /* #5b6b7f —  5.5:1 */
+        --c-ink-subtle:    148 163 184;   /* #94a3b8 */
+
+        /* Kenar çubuğu / koyu kroma */
+        --c-chrome:         15  27  40;   /* #0f1b28 */
+        --c-chrome-ink:    226 232 240;   /* #e2e8f0 */
+        --c-chrome-muted:  148 163 184;   /* #94a3b8 */
+
+        /* Grafik */
+        --chart-series:    #2f6cb0;
+        --chart-ramp-1:    #4f8bc9;
+        --chart-ramp-2:    #2f6cb0;
+        --chart-ramp-3:    #1d4f91;
+        --chart-empty:     #e2e8f0;
+        --chart-grid:      #e6ebf2;
+        --chart-axis:      #cbd5e1;
+        --chart-label:     #5b6b7f;
+        --chart-ring:      #ffffff;
+        --chart-spark:     #b6cfeb;
+
+        /* Durum renkleri — ayrılmış anlam, seri renkleriyle karışmaz */
+        --status-good:     #047857;
+        --status-warn:     #b45309;
+        --status-danger:   #b91c1c;
+        --status-neutral:  #64748b;
+    }
+
+    .dark {
+        color-scheme: dark;
+
+        --c-canvas:         10  16  24;   /* #0a1018 */
+        --c-surface:        22  32  44;   /* #16202c */
+        --c-surface-alt:    28  40  54;   /* #1c2836 */
+        --c-surface-sunken: 17  25  35;   /* #111923 */
+
+        --c-line:           44  60  79;   /* #2c3c4f */
+        --c-line-soft:      33  46  62;   /* #212e3e */
+
+        --c-ink:           232 238 245;   /* #e8eef5 — 14.1:1 */
+        --c-ink-muted:     147 164 184;   /* #93a4b8 —  6.5:1 */
+        --c-ink-subtle:    106 124 145;   /* #6a7c91 */
+
+        --c-chrome:         17  27  38;   /* #111b26 */
+        --c-chrome-ink:    226 232 240;
+        --c-chrome-muted:  148 163 184;
+
+        --chart-series:    #5b9bd8;
+        --chart-ramp-1:    #8fbbe6;
+        --chart-ramp-2:    #5b9bd8;
+        --chart-ramp-3:    #3b7ac0;
+        --chart-empty:     #2c3c4f;
+        --chart-grid:      #24303f;
+        --chart-axis:      #33445a;
+        --chart-label:     #93a4b8;
+        --chart-ring:      #16202c;
+        --chart-spark:     #33517a;
+
+        --status-good:     #34d399;
+        --status-warn:     #fbbf24;
+        --status-danger:   #f87171;
+        --status-neutral:  #94a3b8;
     }
 
     html {
@@ -19,9 +93,7 @@
     }
 
     body {
-        @apply bg-sand-50 font-sans text-navy-900 antialiased;
-        background-image: theme('backgroundImage.app-wash');
-        background-attachment: fixed;
+        @apply bg-canvas font-sans text-ink antialiased;
     }
 
     [x-cloak] {
@@ -29,174 +101,207 @@
     }
 
     ::selection {
-        @apply bg-teal-200/70 text-navy-900;
+        @apply bg-accent-200 text-accent-900;
+    }
+
+    .dark ::selection {
+        @apply bg-accent-700 text-white;
+    }
+
+    /* Tarih/saat seçicileri karanlık modda okunur kalsın */
+    .dark input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.75);
     }
 }
 
 @layer components {
     .page-canvas {
-        @apply min-h-screen;
-        background-image: theme('backgroundImage.app-wash');
+        @apply min-h-screen bg-canvas;
     }
 
     .brand-mark {
-        @apply relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 text-white shadow-glow;
+        @apply flex h-10 w-10 items-center justify-center rounded-lg bg-accent-600 text-white;
     }
 
     .brand-mark-sm {
-        @apply relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 text-white shadow-glow;
+        @apply flex h-9 w-9 items-center justify-center rounded-lg bg-accent-600 text-white;
     }
 
+    /* --- Yüzeyler --- */
     .surface {
-        @apply rounded-xl2 border border-white/70 bg-white/90 shadow-soft backdrop-blur-sm;
+        @apply rounded-xl2 border border-line bg-surface shadow-soft;
     }
 
     .surface-solid {
-        @apply rounded-xl2 border border-stone-200/80 bg-white shadow-soft;
+        @apply rounded-xl2 border border-line bg-surface;
     }
 
     .surface-hover {
-        @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+        @apply transition-colors duration-150 hover:border-accent-300 dark:hover:border-accent-700;
     }
 
+    /* --- Tipografi --- */
     .page-title {
-        @apply font-display text-3xl font-semibold tracking-tight text-navy-900 sm:text-[2rem];
+        @apply font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem];
     }
 
     .page-subtitle {
-        @apply mt-1.5 text-sm leading-relaxed text-stone-500;
+        @apply mt-1 text-sm leading-relaxed text-ink-muted;
     }
 
     .section-label {
-        @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700;
+        @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-subtle;
     }
 
+    /* --- Düğmeler --- */
     .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-               transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+               transition-colors duration-150 focus:outline-none focus-visible:ring-2
+               focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas
                disabled:pointer-events-none disabled:opacity-50;
     }
 
     .btn-primary {
-        @apply btn bg-navy-900 text-white shadow-soft hover:bg-navy-800 focus-visible:ring-navy-600;
+        @apply btn bg-accent-600 text-white hover:bg-accent-700 dark:bg-accent-600 dark:hover:bg-accent-500;
     }
 
+    /* Vurgulu eylem — birincil ile aynı aile, daha koyu adım */
     .btn-accent {
-        @apply btn bg-teal-600 text-white shadow-glow hover:bg-teal-700 focus-visible:ring-teal-400;
+        @apply btn bg-accent-700 text-white hover:bg-accent-800 dark:bg-accent-500 dark:hover:bg-accent-400;
     }
 
     .btn-secondary {
-        @apply btn border border-stone-200/90 bg-white/80 text-navy-800 hover:border-stone-300 hover:bg-white focus-visible:ring-navy-300;
+        @apply btn border border-line bg-surface text-ink hover:bg-surface-sunken;
     }
 
     .btn-danger {
-        @apply btn bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-400;
+        @apply btn bg-red-600 text-white hover:bg-red-700;
     }
 
     .btn-ghost {
-        @apply btn text-navy-700 hover:bg-navy-50/80 focus-visible:ring-navy-200;
+        @apply btn text-ink-muted hover:bg-surface-sunken hover:text-ink;
     }
 
+    /* --- Form --- */
     .field-label {
-        @apply mb-1.5 block text-sm font-medium text-navy-800;
+        @apply mb-1.5 block text-sm font-medium text-ink;
     }
 
     .field-input {
-        @apply block w-full rounded-xl border-stone-300 bg-white text-sm text-navy-900 shadow-sm
-               placeholder:text-stone-400 focus:border-teal-500 focus:ring-teal-500/30;
+        @apply block w-full rounded-lg border-line bg-surface text-sm text-ink shadow-none
+               placeholder:text-ink-subtle focus:border-accent-500 focus:ring-1 focus:ring-accent-500;
     }
 
     .field-error {
-        @apply mt-1.5 text-xs font-medium text-red-600;
+        @apply mt-1.5 text-xs font-medium text-red-600 dark:text-red-400;
     }
 
     .field-hint {
-        @apply mt-1.5 text-xs leading-relaxed text-stone-500;
+        @apply mt-1.5 text-xs leading-relaxed text-ink-muted;
     }
 
+    /* --- Rozetler --- */
     .badge {
-        @apply inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-wide;
+        @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium;
+    }
+
+    .badge-accent {
+        @apply badge bg-accent-50 text-accent-700 ring-1 ring-inset ring-accent-200
+               dark:bg-accent-900/40 dark:text-accent-200 dark:ring-accent-700/60;
     }
 
     .badge-amber {
-        @apply badge bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/80;
+        @apply badge bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200
+               dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-700/50;
     }
 
     .badge-teal {
-        @apply badge bg-teal-50 text-teal-800 ring-1 ring-inset ring-teal-200/80;
+        @apply badge-accent;
     }
 
     .badge-red {
-        @apply badge bg-red-50 text-red-700 ring-1 ring-inset ring-red-200/80;
+        @apply badge bg-red-50 text-red-700 ring-1 ring-inset ring-red-200
+               dark:bg-red-900/30 dark:text-red-200 dark:ring-red-700/50;
     }
 
     .badge-green {
-        @apply badge bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/80;
+        @apply badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200
+               dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-700/50;
     }
 
     .badge-gray {
-        @apply badge bg-stone-100 text-stone-600 ring-1 ring-inset ring-stone-200/80;
+        @apply badge bg-surface-sunken text-ink-muted ring-1 ring-inset ring-line;
     }
 
+    /* --- Tablo --- */
     .data-table {
-        @apply min-w-full divide-y divide-stone-100 text-sm;
+        @apply min-w-full text-sm;
     }
 
     .data-table thead th {
-        @apply bg-sand-50/80 px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500;
+        @apply border-b border-line bg-surface-alt px-4 py-2.5 text-left text-[11px]
+               font-semibold uppercase tracking-[0.08em] text-ink-muted;
     }
 
     .data-table tbody td {
-        @apply px-4 py-4 align-middle text-navy-800;
+        @apply px-4 py-3 align-middle text-ink;
     }
 
     .data-table tbody tr {
-        @apply transition-colors hover:bg-teal-50/30;
+        @apply transition-colors hover:bg-surface-alt;
     }
 
+    /* --- Kartlar --- */
     .stat-card {
-        @apply relative overflow-hidden rounded-xl2 border border-white/70 bg-white/90 p-5 shadow-soft backdrop-blur-sm;
-    }
-
-    .stat-card::after {
-        content: '';
-        @apply absolute inset-x-0 top-0 h-1;
-        background: var(--stat-accent, theme('colors.navy.700'));
+        @apply rounded-xl2 border border-line bg-surface p-4;
     }
 
     .stepper-dot {
-        @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300;
+        @apply flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200;
     }
 
     .choice-tile {
-        @apply flex w-full flex-col items-start gap-1 rounded-xl2 border p-4 text-left transition-all duration-200;
+        @apply flex w-full flex-col items-start gap-1 rounded-xl2 border p-4 text-left transition-colors duration-150;
     }
 
     .choice-tile-active {
-        @apply border-teal-500 bg-teal-50/50 shadow-glow ring-2 ring-teal-500/20;
+        @apply border-accent-500 bg-accent-50 ring-1 ring-accent-500 dark:bg-accent-900/30;
     }
 
     .choice-tile-idle {
-        @apply border-stone-200/90 bg-white/60 hover:border-navy-300 hover:bg-white;
+        @apply border-line bg-surface hover:border-accent-300 hover:bg-surface-alt dark:hover:border-accent-700;
     }
 
     .alert-soft {
-        @apply flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm ring-1;
+        @apply flex items-start gap-3 rounded-lg px-4 py-3 text-sm ring-1;
     }
 
     .empty-state {
-        @apply flex flex-col items-center justify-center gap-3 px-6 py-16 text-center;
+        @apply flex flex-col items-center justify-center gap-2 px-6 py-12 text-center;
     }
 
     .back-link {
-        @apply inline-flex items-center gap-1.5 text-sm text-stone-500 transition-colors hover:text-navy-800;
+        @apply inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink;
     }
 
     .modal-scrim {
-        @apply absolute inset-0 bg-navy-950/55 backdrop-blur-[2px];
+        @apply absolute inset-0 bg-navy-950/60;
     }
 
     .modal-panel {
-        @apply relative w-full max-w-md rounded-xl2 border border-white/80 bg-white p-6 shadow-lift;
+        @apply relative w-full max-w-md rounded-xl2 border border-line bg-surface p-6 shadow-lift;
+    }
+
+    /* --- Kenar çubuğu --- */
+    .nav-link {
+        @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150;
+    }
+
+    .nav-link-idle {
+        @apply text-chrome-muted hover:bg-white/5 hover:text-chrome-ink;
+    }
+
+    .nav-link-active {
+        @apply bg-accent-600 text-white;
     }
 }

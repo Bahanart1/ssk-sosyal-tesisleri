@@ -30,6 +30,7 @@ class SettingController extends Controller
                 'balance_due_days' => (int) Setting::number('balance.due_days', 15),
                 'cancellation_min_days' => (int) Setting::number('cancellation.min_days_before', 10),
             ],
+            'duesAmount' => Setting::number('dues.annual_amount', 0),
             'bankAccounts' => Setting::get('bank_accounts', []),
         ]);
     }
@@ -54,6 +55,8 @@ class SettingController extends Controller
 
             'balance_due_days' => ['required', 'integer', 'min:1', 'max:120'],
             'cancellation_min_days' => ['required', 'integer', 'min:0', 'max:120'],
+
+            'dues_annual_amount' => ['required', 'numeric', 'min:0'],
 
             'bank_accounts' => ['nullable', 'array'],
             'bank_accounts.*.bank' => ['required_with:bank_accounts.*.iban', 'nullable', 'string', 'max:120'],
@@ -86,6 +89,7 @@ class SettingController extends Controller
 
         Setting::put('balance.due_days', (int) $data['balance_due_days'], 'odeme');
         Setting::put('cancellation.min_days_before', (int) $data['cancellation_min_days'], 'odeme');
+        Setting::put('dues.annual_amount', (float) $data['dues_annual_amount'], 'aidat');
 
         Setting::put('bank_accounts', array_values(array_filter(
             $data['bank_accounts'] ?? [],

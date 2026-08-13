@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Facility;
 use App\Models\Period;
 use App\Models\Reservation;
+use App\Models\RoomType;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 
@@ -43,6 +44,49 @@ class PeriodController extends Controller
             'counts' => $counts,
             'roomTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'room')->ordered()->get(),
             'villaTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'villa')->ordered()->get(),
+        ]);
+    }
+
+    /**
+     * Devre detayı: yer tahsis edilen ve inceleme bekleyen başvurular ile
+     * devrede konaklayacak kişilerin listesi.
+     */
+    public function show(Period $period)
+    {
+        $period->load(['facility', 'roomTariff', 'villaTariff']);
+
+        $reservations = Reservation::query()
+            ->where(fn ($q) => $q->where('period_id', $period->id)->orWhere('second_period_id', $period->id))
+            ->with(['user.customerGroup', 'roomType', 'guests.customerGroup', 'period', 'secondPeriod'])
+            ->get()
+            ->sortBy(fn ($r) => $r->user->name)
+            ->values();
+
+        $allocated = $reservations->whereIn('status', ['approved', 'paid']);
+        $pending = $reservations->where('status', 'pending');
+        $closed = $reservations->whereIn('status', ['rejected', 'cancelled']);
+
+        // Oda tipi bazında tahsis / kapasite
+        $roomTypes = RoomType::where('facility_id', $period->facility_id)->active()->ordered()->get()
+            ->map(fn (RoomType $roomType) => [
+                'roomType' => $roomType,
+                'allocated' => $allocated->where('room_type_id', $roomType->id)->count(),
+                'pending' => $pending->where('room_type_id', $roomType->id)->count(),
+            ]);
+
+        return view('admin.periods.show', [
+            'period' => $period,
+            'allocated' => $allocated,
+            'pending' => $pending,
+            'closed' => $closed,
+            'roomTypes' => $roomTypes,
+            'capacity' => (int) RoomType::where('facility_id', $period->facility_id)->active()->sum('quantity'),
+            'roster' => $allocated->flatMap->guests->sortBy('full_name')->values(),
+            'totals' => [
+                'billed' => (float) $allocated->sum('total_price'),
+                'collected' => (float) $allocated->sum(fn ($r) => $r->paidTotal()),
+                'outstanding' => (float) $allocated->sum(fn ($r) => $r->balanceDue()),
+            ],
         ]);
     }
 

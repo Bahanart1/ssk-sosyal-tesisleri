@@ -48,7 +48,6 @@ class ScreensRenderTest extends TestCase
             'password' => Hash::make('sifre123'),
             'role' => 'customer',
             'customer_group_id' => CustomerGroup::where('code', 'I')->value('id'),
-            'dues_paid_year' => 2026,
             'is_active' => true,
         ]);
     }
@@ -70,8 +69,63 @@ class ScreensRenderTest extends TestCase
             'tarifeler' => ['admin.tariffs.index'],
             'tesis ve odalar' => ['admin.facilities.index'],
             'üyeler' => ['admin.customers.index'],
+            'aidatlar' => ['admin.dues.index'],
             'parametreler' => ['admin.settings.index'],
         ];
+    }
+
+    public function test_uye_detay_sayfasi_acilir(): void
+    {
+        $this->makeReservation();
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.customers.show', $this->member))
+            ->assertOk()
+            ->assertSee($this->member->name)
+            ->assertSee('Aidat geçmişi');
+    }
+
+    public function test_devre_detayi_tahsis_edilen_ve_bekleyen_uyeleri_gosterir(): void
+    {
+        $pendingReservation = $this->makeReservation();
+
+        $allocated = $this->makeReservation();
+        $allocated->update(['status' => 'approved']);
+        $allocated->guests()->update(['full_name' => 'Tahsis Edilen Kişi']);
+
+        $period = \App\Models\Period::findOrFail($pendingReservation->period_id);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.periods.show', $period))
+            ->assertOk()
+            ->assertSee('Yer tahsis edilen üyeler (1)')
+            ->assertSee('İnceleme bekleyen başvurular (1)')
+            // Konaklayacak kişiler listesi yalnız tahsis edilenlerden oluşur
+            ->assertSee('Konaklayacak kişiler (1)')
+            ->assertSee('Tahsis Edilen Kişi');
+    }
+
+    public function test_devre_detayi_baska_devrenin_basvurusunu_gostermez(): void
+    {
+        $reservation = $this->makeReservation();
+        $other = \App\Models\Period::where('number', 16)->firstOrFail();
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.periods.show', $other))
+            ->assertOk()
+            ->assertDontSee($reservation->code);
+    }
+
+    public function test_aidat_ekrani_borclu_uyeyi_gosterir(): void
+    {
+        $debtor = User::customers()->get()->first(fn ($u) => $u->hasDuesDebt());
+
+        $this->assertNotNull($debtor, 'Demo veride aidat borçlusu bir üye bulunmalı.');
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.dues.index', ['status' => 'unpaid']))
+            ->assertOk()
+            ->assertSee($debtor->name);
     }
 
     /** @dataProvider adminScreens */
@@ -84,8 +138,11 @@ class ScreensRenderTest extends TestCase
 
     public function test_uye_ekranlari_acilir(): void
     {
-        $this->actingAs($this->member)->get(route('customer.dashboard'))->assertOk();
-        $this->actingAs($this->member)->get(route('customer.reservations.create'))->assertOk();
+        foreach (['dashboard', 'reservations.index', 'reservations.create', 'dues.index', 'profile.edit'] as $name) {
+            $this->actingAs($this->member)
+                ->get(route("customer.{$name}"))
+                ->assertOk();
+        }
     }
 
     public function test_giris_ekranlari_acilir(): void
@@ -120,7 +177,7 @@ class ScreensRenderTest extends TestCase
         $roomType = \App\Models\RoomType::where('code', 'colakli-2-kisilik')->firstOrFail();
 
         $reservation = Reservation::create([
-            'code' => '2026-000001',
+            'code' => '2026-' . str_pad((string) (Reservation::count() + 1), 6, '0', STR_PAD_LEFT),
             'user_id' => $this->member->id,
             'facility_id' => $roomType->facility_id,
             'room_type_id' => $roomType->id,

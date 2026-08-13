@@ -16,23 +16,23 @@
         </div>
 
         <div class="surface mb-6 overflow-hidden">
-            <div class="divide-y divide-stone-100/80">
+            <div class="divide-y divide-line">
                 <div class="flex justify-between px-6 py-3.5 text-sm">
-                    <span class="text-stone-500">Toplam tutar</span>
-                    <x-money :value="$reservation->total_price" class="font-medium text-navy-900" />
+                    <span class="text-ink-muted">Toplam tutar</span>
+                    <x-money :value="$reservation->total_price" class="font-medium text-ink" />
                 </div>
                 <div class="flex justify-between px-6 py-3.5 text-sm">
-                    <span class="text-stone-500">Ödenen (peşinat dahil)</span>
-                    <x-money :value="$reservation->paidTotal()" class="font-medium text-navy-900" />
+                    <span class="text-ink-muted">Ödenen (peşinat dahil)</span>
+                    <x-money :value="$reservation->paidTotal()" class="font-medium text-ink" />
                 </div>
-                <div class="flex items-center justify-between bg-navy-900 px-6 py-4 text-white">
+                <div class="flex items-center justify-between bg-chrome px-6 py-4 text-white">
                     <span class="font-semibold">Ödenecek bakiye</span>
                     <x-money :value="$balance" class="font-display text-2xl font-semibold" />
                 </div>
                 @if ($reservation->balance_due_date)
                     <div class="flex justify-between px-6 py-3 text-sm">
-                        <span class="text-stone-500">Son ödeme tarihi</span>
-                        <span class="font-medium text-navy-900">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span>
+                        <span class="text-ink-muted">Son ödeme tarihi</span>
+                        <span class="font-medium text-ink">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span>
                     </div>
                 @endif
             </div>
@@ -42,35 +42,35 @@
         <div class="mb-6 grid gap-3 sm:grid-cols-2">
             <button type="button" @click="method = 'card'" class="choice-tile"
                     :class="method === 'card' ? 'choice-tile-active' : 'choice-tile-idle'">
-                <span class="font-semibold text-navy-900">Kredi / Banka kartı</span>
-                <span class="text-xs text-stone-500">Sanal POS üzerinden, taksit imkanıyla.</span>
+                <span class="font-semibold text-ink">Kredi / Banka kartı</span>
+                <span class="text-xs text-ink-muted">Sanal POS üzerinden, taksit imkanıyla.</span>
             </button>
             <button type="button" @click="method = 'transfer'" class="choice-tile"
                     :class="method === 'transfer' ? 'choice-tile-active' : 'choice-tile-idle'">
-                <span class="font-semibold text-navy-900">Havale / EFT</span>
-                <span class="text-xs text-stone-500">Dernek hesabına yatırıp dekontu yükleyin.</span>
+                <span class="font-semibold text-ink">Havale / EFT</span>
+                <span class="text-xs text-ink-muted">Dernek hesabına yatırıp dekontu yükleyin.</span>
             </button>
         </div>
 
         {{-- Kart --}}
         <form x-show="method === 'card'" method="POST" action="{{ route('customer.payment.card', $reservation) }}" class="surface p-6">
             @csrf
-            <h2 class="font-display text-lg font-semibold text-navy-900">Ödeme seçenekleri</h2>
-            <p class="mt-1 text-sm text-stone-500">Bakiye tutarı peşin veya banka kartına taksitle ödenebilir.</p>
+            <h2 class="font-display text-lg font-semibold text-ink">Ödeme seçenekleri</h2>
+            <p class="mt-1 text-sm text-ink-muted">Bakiye tutarı peşin veya banka kartına taksitle ödenebilir.</p>
 
             <div class="mt-5 space-y-2">
                 @foreach ($installments as $option)
                     <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-all"
-                           :class="installment === {{ $option['installment'] }} ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20' : 'border-stone-200 hover:border-navy-300'">
+                           :class="installment === {{ $option['installment'] }} ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/30 ring-2 ring-accent-500' : 'border-line hover:border-accent-300'">
                         <span class="flex items-center gap-3">
                             <input type="radio" name="installment" value="{{ $option['installment'] }}"
-                                   x-model.number="installment" class="text-teal-600 focus:ring-teal-500">
-                            <span class="text-sm font-medium text-navy-900">{{ $option['label'] }}</span>
+                                   x-model.number="installment" class="text-accent-600 dark:text-accent-400 focus:ring-accent-500">
+                            <span class="text-sm font-medium text-ink">{{ $option['label'] }}</span>
                         </span>
                         <span class="text-right">
-                            <x-money :value="$option['total']" class="block text-sm font-semibold text-navy-900" />
+                            <x-money :value="$option['total']" class="block text-sm font-semibold text-ink" />
                             @if ($option['installment'] > 1)
-                                <span class="text-[11px] text-stone-500">aylık <x-money :value="$option['monthly']" /></span>
+                                <span class="text-[11px] text-ink-muted">aylık <x-money :value="$option['monthly']" /></span>
                             @endif
                         </span>
                     </label>
@@ -87,16 +87,16 @@
         <form x-show="method === 'transfer'" x-cloak method="POST" action="{{ route('customer.payment.transfer', $reservation) }}"
               enctype="multipart/form-data" class="surface p-6">
             @csrf
-            <h2 class="font-display text-lg font-semibold text-navy-900">Havale / EFT bildirimi</h2>
-            <p class="mt-1 text-sm text-stone-500">Aşağıdaki hesaplardan birine <x-money :value="$balance" class="font-semibold text-navy-800" /> yatırıp dekontunuzu yükleyin.</p>
+            <h2 class="font-display text-lg font-semibold text-ink">Havale / EFT bildirimi</h2>
+            <p class="mt-1 text-sm text-ink-muted">Aşağıdaki hesaplardan birine <x-money :value="$balance" class="font-semibold text-ink" /> yatırıp dekontunuzu yükleyin.</p>
 
-            <div class="mt-5 overflow-hidden rounded-xl border border-stone-200/80">
-                <div class="divide-y divide-stone-100">
+            <div class="mt-5 overflow-hidden rounded-xl border border-line">
+                <div class="divide-y divide-line">
                     @foreach ($bankAccounts as $account)
                         <div class="px-4 py-2.5">
-                            <p class="text-sm font-medium text-navy-900">{{ $account['bank'] }}</p>
-                            <p class="text-[11px] text-stone-500">{{ $account['branch'] ?? '' }}</p>
-                            <p class="mt-0.5 font-mono text-xs text-navy-800">{{ $account['iban'] }}</p>
+                            <p class="text-sm font-medium text-ink">{{ $account['bank'] }}</p>
+                            <p class="text-[11px] text-ink-muted">{{ $account['branch'] ?? '' }}</p>
+                            <p class="mt-0.5 font-mono text-xs text-ink">{{ $account['iban'] }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -105,7 +105,7 @@
             <div class="mt-5">
                 <label class="field-label">Banka dekontu <span class="text-red-500">*</span></label>
                 <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" required
-                       class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-navy-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
+                       class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
                 @error('receipt') <p class="field-error">{{ $message }}</p> @enderror
                 <p class="field-hint">Dekontunuz Yönetim tarafından doğrulandıktan sonra ödemeniz tamamlanmış sayılır.</p>
             </div>

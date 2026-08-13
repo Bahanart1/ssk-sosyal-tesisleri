@@ -15,10 +15,11 @@ return new class extends Migration
             $table->string('phone', 20)->nullable()->after('tc_no');
             $table->foreignId('customer_group_id')->nullable()->constrained('customer_groups')->nullOnDelete()->after('phone');
 
-            // Aidat borcu kontrolü (Usul ve Esaslar Madde 5/10): borcu olan üyenin formu işleme alınmaz.
-            $table->unsignedSmallInteger('dues_paid_year')->nullable()->after('customer_group_id');
+            // Üyelik tarihi — aidat tahakkuku bu yıldan itibaren işletilir.
+            $table->date('joined_at')->nullable()->after('customer_group_id');
+            $table->text('address')->nullable()->after('joined_at');
 
-            $table->boolean('is_active')->default(true)->after('dues_paid_year');
+            $table->boolean('is_active')->default(true)->after('address');
             $table->string('email')->nullable()->change();
         });
     }
@@ -27,7 +28,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropConstrainedForeignId('customer_group_id');
-            $table->dropColumn(['role', 'membership_no', 'tc_no', 'phone', 'dues_paid_year', 'is_active']);
+            $table->dropColumn(['role', 'membership_no', 'tc_no', 'phone', 'joined_at', 'address', 'is_active']);
         });
     }
 };

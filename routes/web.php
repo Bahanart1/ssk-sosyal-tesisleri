@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DuesController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PeriodController;
@@ -11,7 +12,9 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Customer\DuesController as CustomerDuesController;
 use App\Http\Controllers\Customer\PaymentController as CustomerPaymentController;
+use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\PaymentFlowController;
@@ -72,6 +75,13 @@ Route::middleware('auth')->prefix('belge')->name('documents.')->group(function (
 Route::middleware(['auth', 'role:customer'])->prefix('panel')->name('customer.')->group(function () {
     Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/aidatlarim', [CustomerDuesController::class, 'index'])->name('dues.index');
+
+    Route::get('/hesabim', [CustomerProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/hesabim', [CustomerProfileController::class, 'update'])->name('profile.update');
+    Route::put('/hesabim/sifre', [CustomerProfileController::class, 'updatePassword'])->name('profile.password');
+
+    Route::get('/basvurularim', [CustomerReservationController::class, 'index'])->name('reservations.index');
     Route::get('/basvuru/yeni', [CustomerReservationController::class, 'create'])->name('reservations.create');
     Route::post('/basvuru/fiyat-hesapla', [CustomerReservationController::class, 'quote'])->name('reservations.quote');
     Route::post('/basvuru', [CustomerReservationController::class, 'store'])->name('reservations.store');
@@ -115,6 +125,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Devreler
         Route::get('/devreler', [PeriodController::class, 'index'])->name('periods.index');
         Route::post('/devreler', [PeriodController::class, 'store'])->name('periods.store');
+        Route::get('/devreler/{period}', [PeriodController::class, 'show'])->name('periods.show');
         Route::put('/devreler/{period}', [PeriodController::class, 'update'])->name('periods.update');
         Route::post('/devreler/{period}/durum', [PeriodController::class, 'toggle'])->name('periods.toggle');
 
@@ -133,8 +144,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Üyeler
         Route::get('/uyeler', [CustomerController::class, 'index'])->name('customers.index');
         Route::post('/uyeler', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/uyeler/{customer}', [CustomerController::class, 'show'])->name('customers.show');
         Route::put('/uyeler/{customer}', [CustomerController::class, 'update'])->name('customers.update');
-        Route::post('/uyeler/{customer}/aidat', [CustomerController::class, 'markDuesPaid'])->name('customers.dues');
+
+        // Aidatlar
+        Route::get('/aidatlar', [DuesController::class, 'index'])->name('dues.index');
+        Route::post('/aidatlar/tahakkuk', [DuesController::class, 'accrue'])->name('dues.accrue');
+        Route::post('/uyeler/{customer}/aidat', [DuesController::class, 'store'])->name('dues.store');
+        Route::put('/aidatlar/{due}', [DuesController::class, 'update'])->name('dues.update');
+        Route::post('/aidatlar/{due}/tahsil', [DuesController::class, 'markPaid'])->name('dues.paid');
+        Route::delete('/aidatlar/{due}', [DuesController::class, 'destroy'])->name('dues.destroy');
 
         // Parametreler
         Route::get('/parametreler', [SettingController::class, 'index'])->name('settings.index');

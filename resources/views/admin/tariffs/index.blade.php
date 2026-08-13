@@ -27,10 +27,10 @@
 
     @foreach ($facilities as $facility)
         <div class="mb-8">
-            <h2 class="mb-3 font-display text-xl font-semibold text-navy-900">{{ $facility->name }}</h2>
+            <h2 class="mb-3 font-display text-xl font-semibold text-ink">{{ $facility->name }}</h2>
 
             @if ($facility->tariffs->isEmpty())
-                <div class="surface px-6 py-10 text-center text-sm text-stone-400">
+                <div class="surface px-6 py-10 text-center text-sm text-ink-subtle">
                     {{ $year }} yılı için tarife tanımlanmamış.
                 </div>
             @else
@@ -40,7 +40,7 @@
                             @csrf
                             @method('PUT')
 
-                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100/80 bg-sand-50/60 px-5 py-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-alt px-5 py-3">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span class="badge-{{ $tariff->scope === 'villa' ? 'amber' : 'gray' }} !py-0.5 !text-[10px]">
                                         {{ $tariff->scope === 'villa' ? 'Tablo 2 · Villa' : 'Tablo 1 · Oda' }}
@@ -52,7 +52,7 @@
                                 <button type="submit" class="btn-primary !px-3 !py-1.5 text-xs">Kaydet</button>
                             </div>
 
-                            <div class="grid gap-4 border-b border-stone-100/80 p-5 sm:grid-cols-3">
+                            <div class="grid gap-4 border-b border-line p-5 sm:grid-cols-3">
                                 <div class="sm:col-span-2">
                                     <label class="field-label">Tarife adı</label>
                                     <input type="text" name="name" value="{{ $tariff->name }}" required class="field-input">
@@ -65,7 +65,7 @@
                                 <label class="flex cursor-pointer items-center gap-2 text-sm sm:col-span-3">
                                     <input type="hidden" name="is_discounted" value="0">
                                     <input type="checkbox" name="is_discounted" value="1" @checked($tariff->is_discounted)
-                                           class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+                                           class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
                                     İndirimli devre tarifesi
                                 </label>
                             </div>
@@ -80,13 +80,13 @@
                                             <th>En düşük günlük tutar</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-stone-100">
+                                    <tbody class="divide-y divide-line">
                                         @foreach ($groups as $group)
                                             @php $price = $tariff->prices->firstWhere('customer_group_id', $group->id); @endphp
                                             <tr>
                                                 <td>
                                                     <p class="font-medium">{{ $group->name }}</p>
-                                                    <p class="max-w-xs text-[11px] text-stone-500">{{ $group->description }}</p>
+                                                    <p class="max-w-xs text-[11px] text-ink-muted">{{ $group->description }}</p>
                                                 </td>
                                                 <td>
                                                     <input type="number" step="0.01" min="0" required
@@ -121,11 +121,11 @@
     {{-- Yeni tarife --}}
     <div x-data="{ open: false }" class="surface overflow-hidden">
         <button type="button" @click="open = !open" class="flex w-full items-center justify-between px-6 py-4 text-left">
-            <span class="font-display text-lg font-semibold text-navy-900">Yeni tarife ekle</span>
-            <svg class="h-5 w-5 text-stone-400 transition-transform" :class="open ? 'rotate-45' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            <span class="font-display text-lg font-semibold text-ink">Yeni tarife ekle</span>
+            <svg class="h-5 w-5 text-ink-subtle transition-transform" :class="open ? 'rotate-45' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
         </button>
 
-        <form x-show="open" x-cloak method="POST" action="{{ route('admin.tariffs.store') }}" class="grid gap-4 border-t border-stone-100 p-6 sm:grid-cols-2">
+        <form x-show="open" x-cloak method="POST" action="{{ route('admin.tariffs.store') }}" class="grid gap-4 border-t border-line p-6 sm:grid-cols-2">
             @csrf
             <div>
                 <label class="field-label">Tesis</label>
@@ -155,7 +155,7 @@
                 <input type="number" step="0.01" min="0" name="empty_bed_fee" placeholder="Alınmaz" class="field-input">
             </div>
             <label class="flex cursor-pointer items-center gap-2 text-sm sm:col-span-2">
-                <input type="checkbox" name="is_discounted" value="1" class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+                <input type="checkbox" name="is_discounted" value="1" class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
                 İndirimli devre tarifesi
             </label>
             <div class="sm:col-span-2">

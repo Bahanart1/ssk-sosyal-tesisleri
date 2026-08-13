@@ -30,17 +30,17 @@
             <div class="space-y-6 lg:col-span-2">
                 {{-- Konaklama --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-stone-100/80 px-6 py-4">
-                        <h2 class="font-display text-lg font-semibold text-navy-900">Konaklama</h2>
+                    <div class="border-b border-line px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-ink">Konaklama</h2>
                     </div>
-                    <div class="divide-y divide-stone-100/80">
-                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-stone-500">Tesis</span><span class="font-medium text-navy-900">{{ $reservation->facility->name }}</span></div>
-                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-stone-500">Oda tipi</span><span class="font-medium text-navy-900">{{ $reservation->roomType->name }} ({{ $reservation->roomType->bed_count }} yatak)</span></div>
+                    <div class="divide-y divide-line">
+                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-ink-muted">Tesis</span><span class="font-medium text-ink">{{ $reservation->facility->name }}</span></div>
+                        <div class="flex justify-between px-6 py-3 text-sm"><span class="text-ink-muted">Oda tipi</span><span class="font-medium text-ink">{{ $reservation->roomType->name }} ({{ $reservation->roomType->bed_count }} yatak)</span></div>
                         <div class="flex justify-between gap-4 px-6 py-3 text-sm">
-                            <span class="text-stone-500">Devre</span>
-                            <span class="text-right font-medium text-navy-900">
+                            <span class="text-ink-muted">Devre</span>
+                            <span class="text-right font-medium text-ink">
                                 {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
-                                <span class="block text-xs font-normal text-stone-500">{{ $reservation->start_date->translatedFormat('d F Y') }} – {{ $reservation->end_date->translatedFormat('d F Y') }} · {{ $reservation->nights }} gün</span>
+                                <span class="block text-xs font-normal text-ink-muted">{{ $reservation->start_date->translatedFormat('d F Y') }} – {{ $reservation->end_date->translatedFormat('d F Y') }} · {{ $reservation->nights }} gün</span>
                             </span>
                         </div>
                         @if ($reservation->ground_floor_request)
@@ -50,21 +50,21 @@
                                     {{ $reservation->ground_floor_note }}
                                     @if ($reservation->health_report_path)
                                         <a href="{{ route('documents.health-report', $reservation) }}" target="_blank" rel="noopener"
-                                           class="mt-1 block text-xs font-semibold text-teal-700 underline">Sağlık raporunu görüntüle</a>
+                                           class="mt-1 block text-xs font-semibold text-accent-700 dark:text-accent-300 underline">Sağlık raporunu görüntüle</a>
                                     @endif
                                 </span>
                             </div>
                         @endif
                         @if ($reservation->note)
-                            <div class="flex justify-between gap-4 px-6 py-3 text-sm"><span class="text-stone-500">Üye notu</span><span class="max-w-sm text-right text-navy-900">{{ $reservation->note }}</span></div>
+                            <div class="flex justify-between gap-4 px-6 py-3 text-sm"><span class="text-ink-muted">Üye notu</span><span class="max-w-sm text-right text-ink">{{ $reservation->note }}</span></div>
                         @endif
                     </div>
                 </div>
 
                 {{-- Kişiler --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-stone-100/80 px-6 py-4">
-                        <h2 class="font-display text-lg font-semibold text-navy-900">Konaklayacak kişiler ({{ $reservation->guests->count() }})</h2>
+                    <div class="border-b border-line px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-ink">Konaklayacak kişiler ({{ $reservation->guests->count() }})</h2>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="data-table">
@@ -80,7 +80,7 @@
                                     <th>Kimlik</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-stone-100">
+                            <tbody class="divide-y divide-line">
                                 @foreach ($reservation->guests as $guest)
                                     <tr>
                                         <td class="font-medium">{{ $guest->full_name }}</td>
@@ -112,22 +112,22 @@
 
                 {{-- Ödemeler --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-stone-100/80 px-6 py-4">
-                        <h2 class="font-display text-lg font-semibold text-navy-900">Ödemeler</h2>
+                    <div class="border-b border-line px-6 py-4">
+                        <h2 class="font-display text-lg font-semibold text-ink">Ödemeler</h2>
                     </div>
                     @if ($reservation->payments->isEmpty())
-                        <p class="px-6 py-8 text-center text-sm text-stone-400">Ödeme kaydı yok.</p>
+                        <p class="px-6 py-8 text-center text-sm text-ink-subtle">Ödeme kaydı yok.</p>
                     @else
-                        <ul class="divide-y divide-stone-100">
+                        <ul class="divide-y divide-line">
                             @foreach ($reservation->payments->sortBy('created_at') as $payment)
                                 <li class="px-6 py-3.5">
                                     <div class="flex flex-wrap items-center justify-between gap-3">
                                         <div>
-                                            <p class="text-sm font-medium text-navy-900">
+                                            <p class="text-sm font-medium text-ink">
                                                 {{ $payment->kindLabel() }} · {{ $payment->methodLabel() }}
                                                 @if ($payment->installment > 1) · {{ $payment->installment }} taksit @endif
                                             </p>
-                                            <p class="text-xs text-stone-500">
+                                            <p class="text-xs text-ink-muted">
                                                 {{ $payment->reference_no }} ·
                                                 {{ ($payment->paid_at ?? $payment->created_at)->translatedFormat('d F Y H:i') }}
                                                 @if ($payment->verifier) · {{ $payment->verifier->name }} doğruladı @endif
@@ -135,7 +135,7 @@
                                             </p>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <x-money :value="$payment->amount" class="text-sm font-semibold text-navy-800" />
+                                            <x-money :value="$payment->amount" class="text-sm font-semibold text-ink" />
                                             <x-status-badge :status="$payment->status" />
                                         </div>
                                     </div>
@@ -173,47 +173,58 @@
             <div class="space-y-6">
                 {{-- Üye --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-stone-100/80 px-5 py-3.5">
-                        <h2 class="font-display text-base font-semibold text-navy-900">Başvuru sahibi</h2>
+                    <div class="border-b border-line px-5 py-3.5">
+                        <h2 class="font-display text-base font-semibold text-ink">Başvuru sahibi</h2>
                     </div>
-                    <div class="divide-y divide-stone-100/80 text-sm">
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Ad soyad</span><span class="font-medium text-navy-900">{{ $reservation->user->name }}</span></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Üyelik no</span><span class="font-medium text-navy-900">{{ $reservation->user->membership_no ?? '-' }}</span></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">TC no</span><span class="font-mono text-xs text-navy-900">{{ $reservation->user->tc_no }}</span></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Telefon</span><span class="font-medium text-navy-900">{{ $reservation->user->phone ?? '-' }}</span></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Grup</span><span class="font-medium text-navy-900">{{ $reservation->user->customerGroup?->name ?? '-' }}</span></div>
+                    <div class="divide-y divide-line text-sm">
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Ad soyad</span><span class="font-medium text-ink">{{ $reservation->user->name }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Üyelik no</span><span class="font-medium text-ink">{{ $reservation->user->membership_no ?? '-' }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">TC no</span><span class="font-mono text-xs text-ink">{{ $reservation->user->tc_no }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Telefon</span><span class="font-medium text-ink">{{ $reservation->user->phone ?? '-' }}</span></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Grup</span><span class="font-medium text-ink">{{ $reservation->user->customerGroup?->name ?? '-' }}</span></div>
                         <div class="flex justify-between px-5 py-2.5">
-                            <span class="text-stone-500">Aidat</span>
-                            <span class="font-medium {{ $reservation->user->hasDuesDebt() ? 'text-red-600' : 'text-emerald-700' }}">
-                                {{ $reservation->user->hasDuesDebt() ? 'Borçlu' : 'Ödendi' }}
-                                @if ($reservation->user->dues_paid_year) ({{ $reservation->user->dues_paid_year }}) @endif
-                            </span>
+                            <span class="text-ink-muted">Aidat</span>
+                            @if (! $reservation->user->isMember())
+                                <span class="font-medium text-ink-muted">Muaf</span>
+                            @elseif ($reservation->user->hasDuesDebt())
+                                <a href="{{ route('admin.customers.show', $reservation->user) }}" class="font-medium text-red-600 hover:underline">
+                                    Borçlu · <x-money :value="$reservation->user->duesDebtTotal()" />
+                                </a>
+                            @else
+                                <span class="font-medium text-emerald-700">
+                                    Güncel @if ($paidThrough = $reservation->user->duesPaidThrough()) ({{ $paidThrough }}) @endif
+                                </span>
+                            @endif
+                        </div>
+                        <div class="flex justify-between px-5 py-2.5">
+                            <span class="text-ink-muted">Üye kartı</span>
+                            <a href="{{ route('admin.customers.show', $reservation->user) }}" class="font-medium text-accent-700 dark:text-accent-300 hover:underline">Aç →</a>
                         </div>
                     </div>
                 </div>
 
                 {{-- Tutar --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-stone-100/80 px-5 py-3.5">
-                        <h2 class="font-display text-base font-semibold text-navy-900">Tutar</h2>
+                    <div class="border-b border-line px-5 py-3.5">
+                        <h2 class="font-display text-base font-semibold text-ink">Tutar</h2>
                     </div>
-                    <div class="divide-y divide-stone-100/80 text-sm">
+                    <div class="divide-y divide-line text-sm">
                         @if ($reservation->surcharge_per_person_day > 0)
-                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Müracaat farkı</span><x-money :value="$reservation->surcharge_per_person_day" class="font-medium text-navy-900" /></div>
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Müracaat farkı</span><x-money :value="$reservation->surcharge_per_person_day" class="font-medium text-ink" /></div>
                         @endif
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Konaklama</span><x-money :value="$reservation->accommodation_total" class="font-medium text-navy-900" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Konaklama</span><x-money :value="$reservation->accommodation_total" class="font-medium text-ink" /></div>
                         @if ($reservation->empty_bed_total > 0)
-                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Boş yatak ({{ $reservation->empty_bed_count }})</span><x-money :value="$reservation->empty_bed_total" class="font-medium text-navy-900" /></div>
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Boş yatak ({{ $reservation->empty_bed_count }})</span><x-money :value="$reservation->empty_bed_total" class="font-medium text-ink" /></div>
                         @endif
                         @if ((float) $reservation->adjustment_amount !== 0.0)
-                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">{{ $reservation->adjustment_note ?: 'Düzeltme' }}</span><x-money :value="$reservation->adjustment_amount" class="font-medium text-navy-900" /></div>
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">{{ $reservation->adjustment_note ?: 'Düzeltme' }}</span><x-money :value="$reservation->adjustment_amount" class="font-medium text-ink" /></div>
                         @endif
-                        <div class="flex justify-between bg-sand-50 px-5 py-3"><span class="font-semibold text-navy-900">Toplam</span><x-money :value="$reservation->total_price" class="font-display text-lg font-semibold text-teal-700" /></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Peşinat</span><x-money :value="$reservation->deposit_amount" class="font-medium text-navy-900" /></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-navy-900" /></div>
-                        <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-stone-600">Kalan bakiye</span><x-money :value="$reservation->balanceDue()" class="font-semibold text-navy-900" /></div>
+                        <div class="flex justify-between bg-surface-alt px-5 py-3"><span class="font-semibold text-ink">Toplam</span><x-money :value="$reservation->total_price" class="font-display text-lg font-semibold text-accent-700 dark:text-accent-300" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Peşinat</span><x-money :value="$reservation->deposit_amount" class="font-medium text-ink" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-ink" /></div>
+                        <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-ink-muted">Kalan bakiye</span><x-money :value="$reservation->balanceDue()" class="font-semibold text-ink" /></div>
                         @if ($reservation->balance_due_date)
-                            <div class="flex justify-between px-5 py-2.5"><span class="text-stone-500">Son ödeme</span><span class="font-medium text-navy-900">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span></div>
+                            <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Son ödeme</span><span class="font-medium text-ink">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span></div>
                         @endif
                     </div>
                 </div>
@@ -231,7 +242,7 @@
                                 </form>
                             @endif
                             <button type="button" @click="rejectOpen = true" class="btn-secondary w-full !text-red-600">Reddet</button>
-                            <button type="button" @click="cancelOpen = true" class="btn-ghost w-full !text-stone-500">İptal Et</button>
+                            <button type="button" @click="cancelOpen = true" class="btn-ghost w-full !text-ink-muted">İptal Et</button>
                         </div>
                     </div>
                 @endif
@@ -239,9 +250,9 @@
                 @if ($reservation->admin_note)
                     <div class="surface p-5">
                         <p class="section-label">Yönetim notu</p>
-                        <p class="mt-2 whitespace-pre-line text-sm text-stone-600">{{ $reservation->admin_note }}</p>
+                        <p class="mt-2 whitespace-pre-line text-sm text-ink-muted">{{ $reservation->admin_note }}</p>
                         @if ($reservation->approver)
-                            <p class="mt-2 text-xs text-stone-400">{{ $reservation->approver->name }} · {{ $reservation->decided_at?->translatedFormat('d F Y H:i') }}</p>
+                            <p class="mt-2 text-xs text-ink-subtle">{{ $reservation->approver->name }} · {{ $reservation->decided_at?->translatedFormat('d F Y H:i') }}</p>
                         @endif
                     </div>
                 @endif
@@ -253,8 +264,8 @@
             <div x-show="rejectOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
                 <div class="modal-scrim" @click="rejectOpen = false"></div>
                 <div class="modal-panel" x-transition>
-                    <h3 class="font-display text-lg font-semibold text-navy-900">Başvuruyu reddet</h3>
-                    <p class="mt-1 text-sm text-stone-500">Üyeye gösterilecek gerekçeyi girin.</p>
+                    <h3 class="font-display text-lg font-semibold text-ink">Başvuruyu reddet</h3>
+                    <p class="mt-1 text-sm text-ink-muted">Üyeye gösterilecek gerekçeyi girin.</p>
                     <form method="POST" action="{{ route('admin.reservations.reject', $reservation) }}" class="mt-4">
                         @csrf
                         <textarea name="admin_note" required rows="3" class="field-input" placeholder="Red gerekçesi…">{{ old('admin_note') }}</textarea>
@@ -273,7 +284,7 @@
             <div x-show="cancelOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
                 <div class="modal-scrim" @click="cancelOpen = false"></div>
                 <div class="modal-panel" x-transition>
-                    <h3 class="font-display text-lg font-semibold text-navy-900">Başvuruyu iptal et</h3>
+                    <h3 class="font-display text-lg font-semibold text-ink">Başvuruyu iptal et</h3>
                     <form method="POST" action="{{ route('admin.reservations.cancel', $reservation) }}" class="mt-4">
                         @csrf
                         <textarea name="admin_note" required rows="3" class="field-input" placeholder="İptal gerekçesi…"></textarea>

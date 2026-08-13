@@ -16,27 +16,30 @@ class DashboardController extends Controller
             ->latest('created_at')
             ->get();
 
-        $active = $reservations
-            ->whereIn('status', ['pending', 'approved', 'paid'])
+        // Yaklaşan konaklama: yer tahsis edilmiş ve devresi henüz bitmemiş
+        $upcoming = $reservations
+            ->whereIn('status', ['approved', 'paid'])
+            ->filter(fn ($r) => $r->end_date->gte(now()->startOfDay()))
             ->sortBy('start_date')
             ->first();
 
-        $awaitingPayment = $reservations->where('status', 'approved')
+        $awaitingPayment = $reservations
+            ->where('status', 'approved')
             ->filter(fn ($r) => $r->balanceDue() > 0)
             ->sortBy('balance_due_date');
 
-        $past = $reservations->whereIn('status', ['rejected', 'cancelled'])
-            ->merge($reservations->where('status', 'paid')->filter(fn ($r) => $r->end_date->isPast()))
-            ->sortByDesc('created_at')
-            ->take(5);
-
         return view('customer.dashboard', [
             'user' => $user,
-            'reservations' => $reservations,
-            'active' => $active,
+            'recent' => $reservations->take(3),
+            'total' => $reservations->count(),
+            'pendingCount' => $reservations->where('status', 'pending')->count(),
+            'upcoming' => $upcoming,
             'awaitingPayment' => $awaitingPayment,
-            'past' => $past,
+            'balanceTotal' => (float) $awaitingPayment->sum(fn ($r) => $r->balanceDue()),
             'hasDuesDebt' => $user->hasDuesDebt(),
+            'outstandingDues' => $user->outstandingDues(),
+            'duesDebtTotal' => $user->duesDebtTotal(),
+            'canApply' => $user->canApply(),
         ]);
     }
 }

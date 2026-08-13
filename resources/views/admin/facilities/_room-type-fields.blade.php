@@ -44,12 +44,12 @@
 
 <label class="flex cursor-pointer items-center gap-2 text-sm">
     <input type="hidden" name="is_ground_floor" value="0">
-    <input type="checkbox" name="is_ground_floor" value="1" x-model="{{ $model }}.is_ground_floor" class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+    <input type="checkbox" name="is_ground_floor" value="1" x-model="{{ $model }}.is_ground_floor" class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
     Zemin kat (%10 indirim uygulanır)
 </label>
 
 <label class="flex cursor-pointer items-center gap-2 text-sm">
     <input type="hidden" name="is_active" value="0">
-    <input type="checkbox" name="is_active" value="1" x-model="{{ $model }}.is_active" class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+    <input type="checkbox" name="is_active" value="1" x-model="{{ $model }}.is_active" class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
     Aktif
 </label>

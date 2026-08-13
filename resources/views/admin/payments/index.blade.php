@@ -45,22 +45,22 @@
 
     <div class="surface overflow-hidden">
         @if ($payments->isEmpty())
-            <p class="px-6 py-16 text-center text-sm text-stone-400">Ödeme kaydı bulunamadı.</p>
+            <p class="px-6 py-16 text-center text-sm text-ink-subtle">Ödeme kaydı bulunamadı.</p>
         @else
-            <ul class="divide-y divide-stone-100">
+            <ul class="divide-y divide-line">
                 @foreach ($payments as $payment)
                     <li x-data="{ rejectOpen: false }" class="p-5">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <a href="{{ route('admin.reservations.show', $payment->reservation) }}"
-                                       class="font-semibold text-navy-900 hover:text-teal-700">
+                                       class="font-semibold text-ink hover:text-accent-700 dark:hover:text-accent-300">
                                         {{ $payment->reservation->user->name }}
                                     </a>
                                     <span class="badge-gray !py-0.5 !text-[10px]">{{ $payment->kindLabel() }}</span>
                                     <x-status-badge :status="$payment->status" />
                                 </div>
-                                <p class="mt-1 text-xs text-stone-500">
+                                <p class="mt-1 text-xs text-ink-muted">
                                     {{ $payment->reservation->code }} · {{ $payment->methodLabel() }}
                                     @if ($payment->installment > 1) · {{ $payment->installment }} taksit @endif
                                     · {{ $payment->reference_no }}
@@ -70,10 +70,10 @@
                                     <p class="mt-1 text-xs text-red-600">{{ $payment->failure_reason }}</p>
                                 @endif
                                 @if ($payment->verifier)
-                                    <p class="mt-1 text-xs text-stone-400">{{ $payment->verifier->name }} · {{ $payment->verified_at?->translatedFormat('d F Y H:i') }}</p>
+                                    <p class="mt-1 text-xs text-ink-subtle">{{ $payment->verifier->name }} · {{ $payment->verified_at?->translatedFormat('d F Y H:i') }}</p>
                                 @endif
                             </div>
-                            <x-money :value="$payment->amount" class="shrink-0 font-display text-lg font-semibold text-navy-900" />
+                            <x-money :value="$payment->amount" class="shrink-0 font-display text-lg font-semibold text-ink" />
                         </div>
 
                         <div class="mt-3 flex flex-wrap items-center gap-2">

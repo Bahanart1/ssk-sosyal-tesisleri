@@ -17,9 +17,9 @@
 
             {{-- Peşinat --}}
             <div class="surface overflow-hidden">
-                <div class="border-b border-stone-100/80 px-6 py-4">
-                    <h2 class="font-display text-lg font-semibold text-navy-900">Peşinat tutarları</h2>
-                    <p class="text-xs text-stone-500">Oda veya villa başına, müracaat sırasında peşin olarak ödenir.</p>
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Peşinat tutarları</h2>
+                    <p class="text-xs text-ink-muted">Oda veya villa başına, müracaat sırasında peşin olarak ödenir.</p>
                 </div>
                 <div class="grid gap-5 p-6 sm:grid-cols-2">
                     <div>
@@ -43,13 +43,13 @@
 
             {{-- Müracaat tarihine göre ilave ücret --}}
             <div class="surface overflow-hidden">
-                <div class="border-b border-stone-100/80 px-6 py-4">
-                    <h2 class="font-display text-lg font-semibold text-navy-900">Müracaat tarihine göre ilave ücret</h2>
-                    <p class="text-xs text-stone-500">Kişi başı günlük olarak tablo ücretlerine eklenir. Bitiş tarihi boş bırakılırsa süresizdir.</p>
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Müracaat tarihine göre ilave ücret</h2>
+                    <p class="text-xs text-ink-muted">Kişi başı günlük olarak tablo ücretlerine eklenir. Bitiş tarihi boş bırakılırsa süresizdir.</p>
                 </div>
                 <div class="space-y-3 p-6">
                     <template x-for="(tier, index) in tiers" :key="index">
-                        <div class="grid items-end gap-3 rounded-xl border border-stone-200/80 p-4 sm:grid-cols-4">
+                        <div class="grid items-end gap-3 rounded-xl border border-line p-4 sm:grid-cols-4">
                             <div>
                                 <label class="field-label">Başlangıç</label>
                                 <input type="date" :name="'tiers['+index+'][from]'" x-model="tier.from" class="field-input">
@@ -82,9 +82,9 @@
 
             {{-- Oranlar --}}
             <div class="surface overflow-hidden">
-                <div class="border-b border-stone-100/80 px-6 py-4">
-                    <h2 class="font-display text-lg font-semibold text-navy-900">Ücretlendirme oranları</h2>
-                    <p class="text-xs text-stone-500">Ondalık olarak girin (örn. 0,60 → %60).</p>
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Ücretlendirme oranları</h2>
+                    <p class="text-xs text-ink-muted">Ondalık olarak girin (örn. 0,60 → %60).</p>
                 </div>
                 <div class="grid gap-5 p-6 sm:grid-cols-3">
                     <div>
@@ -105,8 +105,8 @@
 
             {{-- Ödeme koşulları --}}
             <div class="surface overflow-hidden">
-                <div class="border-b border-stone-100/80 px-6 py-4">
-                    <h2 class="font-display text-lg font-semibold text-navy-900">Ödeme ve iptal koşulları</h2>
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Ödeme ve iptal koşulları</h2>
                 </div>
                 <div class="grid gap-5 p-6 sm:grid-cols-2">
                     <div>
@@ -122,15 +122,30 @@
                 </div>
             </div>
 
+            {{-- Üyelik aidatı --}}
+            <div class="surface overflow-hidden">
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Üyelik aidatı</h2>
+                    <p class="text-xs text-ink-muted">Yıllık tahakkuk oluştururken varsayılan olarak kullanılır.</p>
+                </div>
+                <div class="grid gap-5 p-6 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label">Yıllık aidat tutarı (₺)</label>
+                        <input type="number" step="0.01" min="0" name="dues_annual_amount" value="{{ $duesAmount }}" required class="field-input">
+                        <p class="field-hint">Aidatlar ekranından yıl bazında farklı bir tutarla da tahakkuk açabilirsiniz.</p>
+                    </div>
+                </div>
+            </div>
+
             {{-- Banka hesapları --}}
             <div class="surface overflow-hidden">
-                <div class="border-b border-stone-100/80 px-6 py-4">
-                    <h2 class="font-display text-lg font-semibold text-navy-900">Banka hesapları</h2>
-                    <p class="text-xs text-stone-500">Peşinat ve bakiye havalesi için üyelere gösterilir.</p>
+                <div class="border-b border-line px-6 py-4">
+                    <h2 class="font-display text-lg font-semibold text-ink">Banka hesapları</h2>
+                    <p class="text-xs text-ink-muted">Peşinat ve bakiye havalesi için üyelere gösterilir.</p>
                 </div>
                 <div class="space-y-3 p-6">
                     <template x-for="(account, index) in accounts" :key="index">
-                        <div class="grid items-end gap-3 rounded-xl border border-stone-200/80 p-4 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
+                        <div class="grid items-end gap-3 rounded-xl border border-line p-4 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
                             <div>
                                 <label class="field-label">Banka</label>
                                 <input type="text" :name="'bank_accounts['+index+'][bank]'" x-model="account.bank" class="field-input">

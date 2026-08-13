@@ -23,6 +23,30 @@ class ReservationController extends Controller
         private readonly PaymentService $payments,
     ) {}
 
+    /** Üyenin tüm başvuruları. */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        $query = $user->reservations()
+            ->with(['facility', 'roomType', 'period', 'secondPeriod', 'payments']);
+
+        if ($status = $request->get('status')) {
+            $query->where('status', $status);
+        }
+
+        $reservations = $query->latest('created_at')->get();
+
+        return view('customer.reservations.index', [
+            'reservations' => $reservations,
+            'counts' => $user->reservations()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            'canApply' => $user->canApply(),
+        ]);
+    }
+
     public function create()
     {
         $user = Auth::user();

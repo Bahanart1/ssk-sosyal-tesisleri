@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
@@ -12,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name', 'email', 'membership_no', 'tc_no', 'phone', 'password',
-        'role', 'customer_group_id', 'dues_paid_year', 'is_active',
+        'role', 'customer_group_id', 'joined_at', 'address', 'is_active',
     ];
 
     protected $hidden = [
@@ -24,6 +25,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'joined_at' => 'date',
             'is_active' => 'boolean',
         ];
     }
@@ -38,6 +40,11 @@ class User extends Authenticatable
         return $this->hasMany(Reservation::class);
     }
 
+    public function dues()
+    {
+        return $this->hasMany(MembershipDue::class)->orderByDesc('year');
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -48,19 +55,49 @@ class User extends Authenticatable
         return $this->role === 'customer';
     }
 
+    /** Dernek üyeliği gerektiren bir gruba mı bağlı (I. ve II. Grup)? */
+    public function isMember(): bool
+    {
+        return (bool) $this->customerGroup?->requires_membership;
+    }
+
     /**
-     * İçinde bulunulan yıl dahil aidat borcu bulunan üyelerin müracaat formları
-     * işleme alınmaz (Madde 5/10). Dernek üyesi olmayanlar (III. Grup) muaftır.
+     * İçinde bulunulan yıl dahil önceki yıllara ait aidat borcu bulunan üyelerin
+     * müracaat formları işleme alınmaz (Madde 5/10).
+     *
+     * Dernek üyesi olmayanlar (III. Grup) bu koşuldan muaftır.
      */
     public function hasDuesDebt(?int $year = null): bool
     {
-        if (! $this->customerGroup?->requires_membership) {
+        if (! $this->isMember()) {
             return false;
         }
 
-        $year ??= (int) now()->year;
+        return $this->dues()
+            ->unpaid()
+            ->due($year)
+            ->exists();
+    }
 
-        return $this->dues_paid_year === null || $this->dues_paid_year < $year;
+    /** @return Collection<int, MembershipDue> Vadesi gelmiş ödenmemiş aidatlar. */
+    public function outstandingDues(?int $year = null): Collection
+    {
+        if (! $this->isMember()) {
+            return collect();
+        }
+
+        return $this->dues()->unpaid()->due($year)->orderBy('year')->get();
+    }
+
+    public function duesDebtTotal(?int $year = null): float
+    {
+        return (float) $this->outstandingDues($year)->sum('amount');
+    }
+
+    /** Aidatın ödendiği son yıl — özet gösterimlerde kullanılır. */
+    public function duesPaidThrough(): ?int
+    {
+        return $this->dues()->settled()->max('year');
     }
 
     public function canApply(): bool
@@ -78,5 +115,10 @@ class User extends Authenticatable
         }
 
         return substr($this->tc_no, 0, 3) . str_repeat('*', 5) . substr($this->tc_no, -3);
+    }
+
+    public function scopeCustomers($query)
+    {
+        return $query->where('role', 'customer');
     }
 }

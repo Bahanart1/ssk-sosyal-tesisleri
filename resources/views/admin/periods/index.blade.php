@@ -36,7 +36,7 @@
 
         <div class="surface overflow-hidden">
             @if ($periods->isEmpty())
-                <p class="px-6 py-16 text-center text-sm text-stone-400">Bu tesis ve yıl için devre tanımlanmamış.</p>
+                <p class="px-6 py-16 text-center text-sm text-ink-subtle">Bu tesis ve yıl için devre tanımlanmamış.</p>
             @else
                 <div class="overflow-x-auto">
                     <table class="data-table">
@@ -52,13 +52,13 @@
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-stone-100">
+                        <tbody class="divide-y divide-line">
                             @foreach ($periods as $period)
                                 <tr>
                                     <td>
-                                        <span class="font-medium">{{ $period->number }}. Devre</span>
+                                        <a href="{{ route('admin.periods.show', $period) }}" class="font-medium text-ink hover:text-accent-600 dark:hover:text-accent-400">{{ $period->number }}. Devre</a>
                                         @if ($period->is_discounted)
-                                            <span class="badge-teal ml-1 !py-0.5 !text-[10px]">İndirimli</span>
+                                            <span class="badge-accent ml-1 !py-0.5 !text-[10px]">İndirimli</span>
                                         @endif
                                         @if ($period->note)
                                             <p class="mt-0.5 max-w-xs text-[11px] text-amber-700">{{ $period->note }}</p>
@@ -66,22 +66,29 @@
                                     </td>
                                     <td class="text-xs">
                                         {{ $period->start_date->translatedFormat('d M Y') }}<br>
-                                        <span class="text-stone-500">{{ $period->end_date->translatedFormat('d M Y') }}</span>
+                                        <span class="text-ink-muted">{{ $period->end_date->translatedFormat('d M Y') }}</span>
                                     </td>
                                     <td>{{ $period->nights }}</td>
                                     <td class="text-xs">
                                         {{ $period->roomTariff?->name ?? '—' }}
                                         @if ($period->villaTariff)
-                                            <p class="text-stone-500">{{ $period->villaTariff->name }}</p>
+                                            <p class="text-ink-muted">{{ $period->villaTariff->name }}</p>
                                         @endif
                                     </td>
-                                    <td class="text-xs text-stone-500">{{ $period->combine_group ? 'Grup ' . $period->combine_group : '—' }}</td>
-                                    <td>{{ $counts[$period->id] ?? 0 }}</td>
+                                    <td class="text-xs text-ink-muted">{{ $period->combine_group ? 'Grup ' . $period->combine_group : '—' }}</td>
+                                    <td>
+                                        @php $count = $counts[$period->id] ?? 0; @endphp
+                                        <a href="{{ route('admin.periods.show', $period) }}"
+                                           class="tabular-nums {{ $count > 0 ? 'font-semibold text-ink hover:text-accent-600 dark:hover:text-accent-400' : 'text-ink-subtle' }}">
+                                            {{ $count }}
+                                        </a>
+                                    </td>
                                     <td>
                                         <span class="badge-{{ $period->is_open ? 'green' : 'gray' }}">{{ $period->is_open ? 'Açık' : 'Kapalı' }}</span>
                                     </td>
                                     <td class="text-right">
                                         <div class="flex justify-end gap-1">
+                                            <a href="{{ route('admin.periods.show', $period) }}" class="btn-secondary !px-2.5 !py-1 text-xs">Aç</a>
                                             <button type="button" class="btn-ghost !px-2.5 !py-1 text-xs"
                                                     @click="editing = {{ Illuminate\Support\Js::from([
                                                         'id' => $period->id,
@@ -97,7 +104,7 @@
                                                     ]) }}">Düzenle</button>
                                             <form method="POST" action="{{ route('admin.periods.toggle', $period) }}">
                                                 @csrf
-                                                <button class="btn-ghost !px-2.5 !py-1 text-xs {{ $period->is_open ? '!text-red-600' : '!text-teal-700' }}">
+                                                <button class="btn-ghost !px-2.5 !py-1 text-xs {{ $period->is_open ? '!text-red-600' : '!text-accent-700 dark:text-accent-300' }}">
                                                     {{ $period->is_open ? 'Kapat' : 'Aç' }}
                                                 </button>
                                             </form>
@@ -116,7 +123,7 @@
             <div x-show="editing" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
                 <div class="modal-scrim" @click="editing = null"></div>
                 <div class="modal-panel" x-transition>
-                    <h3 class="mb-4 font-display text-lg font-semibold text-navy-900" x-text="editing?.label + ' düzenle'"></h3>
+                    <h3 class="mb-4 font-display text-lg font-semibold text-ink" x-text="editing?.label + ' düzenle'"></h3>
                     <form method="POST" :action="'{{ url('admin/devreler') }}/' + editing?.id" class="space-y-4">
                         @csrf
                         @method('PUT')
@@ -161,12 +168,12 @@
                         <div class="flex flex-wrap gap-4">
                             <label class="flex cursor-pointer items-center gap-2 text-sm">
                                 <input type="hidden" name="is_discounted" value="0">
-                                <input type="checkbox" name="is_discounted" value="1" x-model="editing.is_discounted" class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+                                <input type="checkbox" name="is_discounted" value="1" x-model="editing.is_discounted" class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
                                 İndirimli devre
                             </label>
                             <label class="flex cursor-pointer items-center gap-2 text-sm">
                                 <input type="hidden" name="is_open" value="0">
-                                <input type="checkbox" name="is_open" value="1" x-model="editing.is_open" class="rounded border-stone-300 text-teal-600 focus:ring-teal-500">
+                                <input type="checkbox" name="is_open" value="1" x-model="editing.is_open" class="rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
                                 Başvuruya açık
                             </label>
                         </div>
