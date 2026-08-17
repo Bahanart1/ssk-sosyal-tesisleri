@@ -21,6 +21,11 @@ class Facility extends Model
         return $this->hasMany(RoomType::class);
     }
 
+    public function rooms()
+    {
+        return $this->hasMany(Room::class);
+    }
+
     public function periods()
     {
         return $this->hasMany(Period::class);

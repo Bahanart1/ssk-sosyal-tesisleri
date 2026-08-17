@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PeriodController;
 use App\Http\Controllers\Admin\ReservationController as AdminReservationController;
+use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Auth\LoginController;
@@ -140,6 +141,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/tesisler/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
         Route::post('/tesisler/{facility}/oda-tipleri', [FacilityController::class, 'storeRoomType'])->name('room-types.store');
         Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update');
+
+        // Oda envanteri
+        Route::get('/odalar', [RoomController::class, 'index'])->name('rooms.index');
+        Route::put('/odalar/{room}', [RoomController::class, 'update'])->name('rooms.update');
 
         // Üyeler
         Route::get('/uyeler', [CustomerController::class, 'index'])->name('customers.index');

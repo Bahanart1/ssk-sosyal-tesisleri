@@ -89,7 +89,8 @@ class FacilityController extends Controller
             'min_billed_persons' => ['nullable', 'integer', 'min:1', 'max:20'],
             'max_persons' => ['nullable', 'integer', 'min:1', 'max:20'],
             'waive_empty_bed_at_occupancy' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:500'],
+            // 0, envanterinde hiç oda kalmamış bir tipin geçerli durumudur.
+            'quantity' => ['required', 'integer', 'min:0', 'max:500'],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
         ], [], [

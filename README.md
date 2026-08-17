@@ -144,7 +144,8 @@ sahibine ve yöneticilere, her istekte yetki kontrolünden geçen route'lar üze
 | Ödemeler | Havale dekontlarının doğrulanması, POS işlemlerinin izlenmesi |
 | Devreler | Devre tarihleri, tarife ataması, başvuruya açma/kapatma; devre kartı |
 | Tarifeler | Tablo 1 ve Tablo 2 ücretlerinin düzenlenmesi |
-| Tesis & Odalar | Oda tipleri, yatak sayıları, envanter |
+| Tesis & Odalar | Oda tipleri, yatak sayıları, ücretlendirme özellikleri |
+| Oda Envanteri | Blok ve oda numarasıyla fiziksel odalar; bakımdaki odayı pasife alma |
 | Üyeler | Üye kartı: künye, aidat geçmişi, başvurular ve ödemeler |
 | Aidatlar | Yıllık tahakkuk ve tahsilat defteri |
 | Parametreler | Peşinat, müracaat farkı kademeleri, çocuk oranları, aidat tutarı, banka hesapları |
@@ -216,6 +217,61 @@ Tema seçimi `localStorage`'a yazılır; kullanıcı hiç seçim yapmadıysa iş
 ayarı izlenir. Tercih, sayfa boyanmadan önce `partials/head.blade.php` içindeki küçük
 bir betikle uygulanır, böylece açılışta tema titremesi olmaz.
 
+## Kütük aktarımı
+
+Dernek kayıtları Excel dosyalarından aktarılır. Her iki komut da yeniden
+çalıştırılabilir ve önce `--dry-run` ile önizlenebilir.
+
+### Üye listesi
+
+```bash
+php artisan ssk:import-members "AKTİF ÜYE LİSTESİ.xlsx" --dry-run
+php artisan ssk:import-members "AKTİF ÜYE LİSTESİ.xlsx" --rounds=10
+```
+
+Beklenen sütunlar: `ÜYE NO · T.C. NO · AD · SOYAD · DOĞ.TARİH · CEP TELEFON ·
+ÜYE TARİHİ · Ç.İLİ · KURUM`. Sütunlar konuma göre değil başlık adına göre
+eşlenir; başlıktan önceki kapak satırları atlanır.
+
+- Eşleştirme anahtarı **üye numarasıdır**. Yeniden çalıştırıldığında mevcut
+  üyelerin kütük alanları güncellenir, **şifreleri korunur**.
+- Başlangıç şifresi üyenin **TC kimlik numarasıdır**; giriş de TC ile yapılır.
+- `--rounds` yalnızca aktarımı hızlandırır — on binlerce bcrypt özeti varsayılan
+  maliyetle yarım saat sürer. Laravel, düşük maliyetli özeti ilk başarılı
+  girişte yapılandırılmış maliyete kendiliğinden yükseltir.
+- `tc_no` tekil olduğundan, kütükte tekrar eden ya da 11 haneli olmayan TC
+  taşıyan üyeler **TC'siz** aktarılır: kayıtları durur, ancak yönetici TC'yi
+  düzeltene dek giriş yapamazlar. Komut bunların tamamını raporlar.
+- Aidat tahakkuku üretilmez; borç kaydı olmayan üye borçsuz sayılır (Madde 5/10).
+
+### Oda listesi
+
+```bash
+php artisan ssk:import-rooms "ODALAR.xlsx" --facility=colakli --dry-run
+php artisan ssk:import-rooms "ODALAR.xlsx" --facility=colakli --prune
+```
+
+Dosya, her bloğun yan yana üç sütunla (`BLOK · ODA NO · tip`) verildiği bir
+ızgaradır. Blok grupları `BLOK` başlıklarının bulunduğu sütunlardan saptanır.
+
+- Oda tipi, **yatak sayısı** ve bloğun **zemin katta** olup olmadığından çözülür:
+  `NERGİS ZEMİN` bloğundaki bir `ÇİFT KİŞİLİK` oda, iki yataklı zemin kat tipine
+  bağlanır (%10 indirim). Şemada karşılığı olmayan tipler
+  `ImportRooms::TYPE_CATALOG` tanımından oluşturulur.
+- Aynı ad birden çok sütun grubunda geçerse ayrı bloklar sayılır ve
+  `KARANFİL A` / `KARANFİL B` biçiminde adlandırılır.
+- `room_types.quantity` fiziksel envanterden yeniden hesaplanır. Hiç odası
+  kalmayan oda tipi rezervasyona açık kalmasın diye pasife alınır
+  (`--keep-empty-types` ile korunabilir).
+- `--prune`, dosyada bulunmayan mevcut odaları siler.
+
+Aktarım sonrası odalar **Oda Envanteri** ekranından yönetilir. Envanteri henüz
+girilmemiş bir tesiste kapasite, oda tiplerindeki adet değerinden okunmaya devam
+eder; envanter girildiği anda adet oradan türetilir.
+
+Villalar oda listesinde yer almaz; envanterleri `FacilitySeeder`'daki adetten
+gelir ve aktarım sırasında değiştirilmez.
+
 ### Demo veri (isteğe bağlı)
 
 Grafiklerin dolu görünmesi için örnek başvuru üreten seeder varsayılan seed'e **dahil
@@ -234,6 +290,7 @@ php artisan test
 ```
 
 - `PricingTest` — fiyat motorunun yayımlanan ücret tablolarıyla birebir uyumu
+- `ImportTest` — üye ve oda kütüklerinin aktarımı (test içinde .xlsx üretilir)
 - `ReservationFlowTest` — başvuru, belge yetkilendirmesi, yönetici düzenlemesi, ödeme akışı
 - `ScreensRenderTest` — tüm ekranların hatasız açılması
 

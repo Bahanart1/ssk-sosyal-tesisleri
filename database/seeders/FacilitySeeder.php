@@ -31,26 +31,36 @@ class FacilitySeeder extends Seeder
             'sort_order' => 2,
         ]);
 
+        // Çolaklı adetleri "ODALAR SON.xlsx" fiziksel oda envanterinden (182 oda)
+        // gelir ve ssk:import-rooms çalıştırıldığında rooms tablosundan yeniden
+        // hesaplanır. Güre adetleri, elde oda listesi bulunmadığından Derneğin
+        // sitesindeki tesis bilgisine dayanır (48 + 36 = 84 oda).
         $roomTypes = [
             // Çolaklı
-            ['facility' => $colakli, 'code' => 'colakli-1-kisilik', 'name' => '1 Kişilik Oda', 'kind' => 'room', 'bed_count' => 1, 'quantity' => 12, 'sort_order' => 1,
-                'description' => 'Tek yataklı standart oda.'],
-            ['facility' => $colakli, 'code' => 'colakli-2-kisilik', 'name' => '2 Kişilik Oda', 'kind' => 'room', 'bed_count' => 2, 'quantity' => 48, 'sort_order' => 2,
+            ['facility' => $colakli, 'code' => 'colakli-1-kisilik', 'name' => '1 Kişilik Oda', 'kind' => 'room', 'bed_count' => 1, 'quantity' => 0, 'sort_order' => 1,
+                'is_active' => false,
+                'description' => 'Tek yataklı standart oda. Envanterdeki tek kişilik odaların tamamı zemin katta olduğundan bu tipte oda kalmamıştır.'],
+            ['facility' => $colakli, 'code' => 'colakli-1-kisilik-zemin', 'name' => '1 Kişilik Oda (Zemin Kat)', 'kind' => 'room', 'bed_count' => 1, 'quantity' => 9, 'sort_order' => 11,
+                'is_ground_floor' => true,
+                'description' => 'Zemin katta tek yataklı oda. Ortopedik engel, yaşlılık veya sağlık mazereti olanlar için; kişi başı günlük ücrette %10 indirim uygulanır.'],
+            ['facility' => $colakli, 'code' => 'colakli-2-kisilik', 'name' => '2 Kişilik Oda', 'kind' => 'room', 'bed_count' => 2, 'quantity' => 30, 'sort_order' => 2,
                 'description' => 'İki yataklı standart oda.'],
-            ['facility' => $colakli, 'code' => 'colakli-2-kisilik-zemin', 'name' => '2 Kişilik Oda (Zemin Kat)', 'kind' => 'room', 'bed_count' => 2, 'quantity' => 14, 'sort_order' => 3,
+            ['facility' => $colakli, 'code' => 'colakli-2-kisilik-zemin', 'name' => '2 Kişilik Oda (Zemin Kat)', 'kind' => 'room', 'bed_count' => 2, 'quantity' => 15, 'sort_order' => 3,
                 'is_ground_floor' => true,
                 'description' => 'Zemin katta iki kişilik oda. Ortopedik engel, yaşlılık veya sağlık mazereti olanlar için; kişi başı günlük ücrette %10 indirim uygulanır.'],
-            ['facility' => $colakli, 'code' => 'colakli-4-kisilik', 'name' => '4 Kişilik Oda', 'kind' => 'room', 'bed_count' => 4, 'quantity' => 36, 'sort_order' => 4,
+            ['facility' => $colakli, 'code' => 'colakli-4-kisilik', 'name' => '4 Kişilik Oda', 'kind' => 'room', 'bed_count' => 4, 'quantity' => 120, 'sort_order' => 4,
                 'description' => 'Dört yataklı aile odası.'],
+            ['facility' => $colakli, 'code' => 'colakli-5-kisilik', 'name' => '5 Kişilik Oda', 'kind' => 'room', 'bed_count' => 5, 'quantity' => 8, 'sort_order' => 15,
+                'description' => 'Beş yataklı aile odası.'],
             ['facility' => $colakli, 'code' => 'colakli-villa', 'name' => 'Villa (3 Oda / 5 Yatak)', 'kind' => 'villa', 'bed_count' => 5, 'quantity' => 10, 'sort_order' => 5,
                 'min_billed_persons' => 5, 'max_persons' => 6,
                 'description' => 'Üç oda ve beş yataktan oluşan villa; yemeksiz konaklama. En az beş kişi üzerinden ücretlendirilir. Zorunluluk halinde ilave ücretle altıncı kişi konaklayabilir, ancak yatak sağlanmaz.'],
 
             // Güre
-            ['facility' => $gure, 'code' => 'gure-3-kisilik', 'name' => '3 Kişilik Oda', 'kind' => 'room', 'bed_count' => 3, 'quantity' => 40, 'sort_order' => 1,
+            ['facility' => $gure, 'code' => 'gure-3-kisilik', 'name' => '3 Kişilik Oda', 'kind' => 'room', 'bed_count' => 3, 'quantity' => 48, 'sort_order' => 1,
                 'waive_empty_bed_at_occupancy' => 2,
                 'description' => 'Üç yataklı oda. İki kişi konaklaması halinde kalan bir yatak için ücret alınmaz.'],
-            ['facility' => $gure, 'code' => 'gure-4-kisilik', 'name' => '4 Kişilik Oda', 'kind' => 'room', 'bed_count' => 4, 'quantity' => 28, 'sort_order' => 2,
+            ['facility' => $gure, 'code' => 'gure-4-kisilik', 'name' => '4 Kişilik Oda', 'kind' => 'room', 'bed_count' => 4, 'quantity' => 36, 'sort_order' => 2,
                 'description' => 'Dört yataklı aile odası.'],
         ];
 

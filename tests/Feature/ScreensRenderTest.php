@@ -68,6 +68,7 @@ class ScreensRenderTest extends TestCase
             'devreler' => ['admin.periods.index'],
             'tarifeler' => ['admin.tariffs.index'],
             'tesis ve odalar' => ['admin.facilities.index'],
+            'oda envanteri' => ['admin.rooms.index'],
             'üyeler' => ['admin.customers.index'],
             'aidatlar' => ['admin.dues.index'],
             'parametreler' => ['admin.settings.index'],

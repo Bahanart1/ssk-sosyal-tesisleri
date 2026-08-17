@@ -28,7 +28,7 @@
     </div>
     <div>
         <label class="field-label">Adet</label>
-        <input type="number" name="quantity" min="1" max="500" x-model.number="{{ $model }}.quantity" required class="field-input">
+        <input type="number" name="quantity" min="0" max="500" x-model.number="{{ $model }}.quantity" required class="field-input">
     </div>
     <div>
         <label class="field-label">Boş yatak muafiyeti</label>

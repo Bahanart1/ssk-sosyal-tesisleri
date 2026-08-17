@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ssk-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    # Geliştirmede restart döngüsü hataları gizler; container durursa logda görünsün.
+    restart: "no"
+
+  # Geliştirme sırasında canlı asset derlemesi istersen:
+  #   docker compose --profile dev up vite
+  vite:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ssk-vite
+    profiles: ["dev"]
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/var/www/html
+    entrypoint: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

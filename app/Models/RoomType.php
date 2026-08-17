@@ -25,6 +25,11 @@ class RoomType extends Model
         return $this->belongsTo(Facility::class);
     }
 
+    public function rooms()
+    {
+        return $this->hasMany(Room::class);
+    }
+
     public function isVilla(): bool
     {
         return $this->kind === 'villa';
