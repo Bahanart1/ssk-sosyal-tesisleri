@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Facility;
 use App\Models\Period;
 use App\Models\Reservation;
+use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
@@ -29,11 +30,22 @@ class PeriodController extends Controller
             ->ordered()
             ->get();
 
-        $counts = Reservation::whereIn('status', ['pending', 'approved', 'paid'])
-            ->whereIn('period_id', $periods->pluck('id'))
-            ->selectRaw('period_id, count(*) as total')
-            ->groupBy('period_id')
-            ->pluck('total', 'period_id');
+        // Devre kapatma kararı yer tahsisine bakılarak verildiğinden, onaylanmış ve
+        // henüz karara bağlanmamış başvurular ayrı sayılır. Birleşik devre başvuruları
+        // her iki devreye de yazılır.
+        $ids = $periods->pluck('id');
+
+        $rows = Reservation::whereIn('status', ['pending', 'approved', 'paid'])
+            ->where(fn ($q) => $q->whereIn('period_id', $ids)->orWhereIn('second_period_id', $ids))
+            ->get(['period_id', 'second_period_id', 'status']);
+
+        $tally = function (array $statuses) use ($rows, $ids) {
+            return $rows
+                ->whereIn('status', $statuses)
+                ->flatMap(fn ($r) => array_filter([$r->period_id, $r->second_period_id]))
+                ->filter(fn ($id) => $ids->contains($id))
+                ->countBy();
+        };
 
         return view('admin.periods.index', [
             'facilities' => $facilities,
@@ -41,10 +53,38 @@ class PeriodController extends Controller
             'year' => $year,
             'years' => Period::distinct()->orderBy('year')->pluck('year'),
             'periods' => $periods,
-            'counts' => $counts,
+            'allocated' => $tally(['approved', 'paid']),
+            'pending' => $tally(['pending']),
+            'capacity' => $this->capacityFor($facility),
             'roomTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'room')->ordered()->get(),
             'villaTariffs' => Tariff::where('facility_id', $facility?->id)->where('scope', 'villa')->ordered()->get(),
         ]);
+    }
+
+    /**
+     * Tesisin ünite kapasitesi.
+     *
+     * Fiziksel oda envanteri aktarılmışsa aktif oda sayısı esas alınır; henüz
+     * aktarılmamış tesislerde oda tiplerinde tanımlı adede düşülür.
+     *
+     * @return array{count: int, source: string}
+     */
+    private function capacityFor(?Facility $facility): array
+    {
+        if (! $facility) {
+            return ['count' => 0, 'source' => 'yok'];
+        }
+
+        $rooms = Room::where('facility_id', $facility->id)->where('is_active', true)->count();
+
+        if ($rooms > 0) {
+            return ['count' => $rooms, 'source' => 'oda envanteri'];
+        }
+
+        return [
+            'count' => (int) RoomType::where('facility_id', $facility->id)->active()->sum('quantity'),
+            'source' => 'oda tipi adetleri',
+        ];
     }
 
     /**
@@ -80,7 +120,7 @@ class PeriodController extends Controller
             'pending' => $pending,
             'closed' => $closed,
             'roomTypes' => $roomTypes,
-            'capacity' => (int) RoomType::where('facility_id', $period->facility_id)->active()->sum('quantity'),
+            'capacity' => $this->capacityFor($period->facility)['count'],
             'roster' => $allocated->flatMap->guests->sortBy('full_name')->values(),
             'totals' => [
                 'billed' => (float) $allocated->sum('total_price'),

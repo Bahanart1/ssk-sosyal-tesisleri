@@ -117,6 +117,123 @@ class ScreensRenderTest extends TestCase
             ->assertDontSee($reservation->code);
     }
 
+    public function test_basvurular_devreye_gore_suzulur(): void
+    {
+        $on5 = \App\Models\Period::where('number', 15)->firstOrFail();
+        $on6 = \App\Models\Period::where('number', 16)->firstOrFail();
+
+        $sadece15 = $this->makeReservation();
+
+        $sadece16 = $this->makeReservation();
+        $sadece16->update(['period_id' => $on6->id]);
+
+        $birlesik = $this->makeReservation();
+        $birlesik->update(['second_period_id' => $on6->id, 'nights' => 13]);
+
+        // 15. devre: kendi başvurusu + birleşik olan görünür, 16'ya ait olan görünmez
+        $this->actingAs($this->admin)
+            ->get(route('admin.reservations.index', ['period' => $on5->id]))
+            ->assertOk()
+            ->assertSee($sadece15->code)
+            ->assertSee($birlesik->code)
+            ->assertDontSee($sadece16->code);
+
+        // 16. devre: kendi başvurusu + birleşik olan görünür
+        $this->actingAs($this->admin)
+            ->get(route('admin.reservations.index', ['period' => $on6->id]))
+            ->assertOk()
+            ->assertSee($sadece16->code)
+            ->assertSee($birlesik->code)
+            ->assertDontSee($sadece15->code);
+    }
+
+    public function test_devre_suzgeci_durum_sekmesiyle_birlikte_calisir(): void
+    {
+        $period = \App\Models\Period::where('number', 15)->firstOrFail();
+
+        $bekleyen = $this->makeReservation();
+        $onayli = $this->makeReservation();
+        $onayli->update(['status' => 'approved']);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.reservations.index', ['period' => $period->id, 'status' => 'approved']))
+            ->assertOk()
+            ->assertSee($onayli->code)
+            ->assertDontSee($bekleyen->code);
+    }
+
+    public function test_devre_listesi_tahsis_ve_bekleyeni_ayri_sayar(): void
+    {
+        $period = \App\Models\Period::where('number', 15)->firstOrFail();
+
+        // Aynı devreye: biri onaylı, biri ödenmiş, biri karara bağlanmamış
+        $this->makeReservation()->update(['status' => 'approved']);
+        $this->makeReservation()->update(['status' => 'paid']);
+        $this->makeReservation()->update(['status' => 'pending']);
+
+        // Reddedilen kapasiteyi işgal etmemeli
+        $this->makeReservation()->update(['status' => 'rejected']);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.periods.index', ['facility' => $period->facility_id, 'year' => $period->year]))
+            ->assertOk();
+
+        $this->assertSame(2, $response->viewData('allocated')[$period->id] ?? 0, 'Tahsis: onaylı + ödenmiş');
+        $this->assertSame(1, $response->viewData('pending')[$period->id] ?? 0, 'Bekleyen: yalnız karara bağlanmamış');
+    }
+
+    public function test_birlesik_devre_her_iki_devrede_de_sayilir(): void
+    {
+        $first = \App\Models\Period::where('number', 15)->firstOrFail();
+        $second = \App\Models\Period::where('number', 16)->firstOrFail();
+
+        $this->makeReservation()->update([
+            'status' => 'approved',
+            'second_period_id' => $second->id,
+            'end_date' => $second->end_date,
+            'nights' => 13,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.periods.index', ['facility' => $first->facility_id, 'year' => $first->year]))
+            ->assertOk();
+
+        $allocated = $response->viewData('allocated');
+
+        $this->assertSame(1, $allocated[$first->id] ?? 0, 'Birinci devrede sayılmalı');
+        $this->assertSame(1, $allocated[$second->id] ?? 0, 'İkinci devrede de sayılmalı');
+    }
+
+    public function test_doluluk_kapasitesi_oda_envanterinden_gelir(): void
+    {
+        $facility = \App\Models\Facility::where('slug', 'colakli')->firstOrFail();
+
+        // Envanter yokken oda tipi adetlerine düşer
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.periods.index', ['facility' => $facility->id]))
+            ->assertOk();
+        $this->assertSame('oda tipi adetleri', $response->viewData('capacity')['source']);
+
+        // Fiziksel oda eklendiğinde envanter esas alınır
+        $roomType = \App\Models\RoomType::where('facility_id', $facility->id)->where('kind', 'room')->firstOrFail();
+        foreach (range(1, 3) as $no) {
+            \App\Models\Room::create([
+                'facility_id' => $facility->id,
+                'room_type_id' => $roomType->id,
+                'block' => 'TEST',
+                'number' => (string) $no,
+                'is_active' => true,
+            ]);
+        }
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.periods.index', ['facility' => $facility->id]))
+            ->assertOk();
+
+        $this->assertSame('oda envanteri', $response->viewData('capacity')['source']);
+        $this->assertSame(3, $response->viewData('capacity')['count']);
+    }
+
     public function test_aidat_ekrani_borclu_uyeyi_gosterir(): void
     {
         $debtor = User::customers()->get()->first(fn ($u) => $u->hasDuesDebt());

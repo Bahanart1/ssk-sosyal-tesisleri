@@ -48,6 +48,22 @@
             </select>
         </div>
         <div>
+            <label class="field-label">Devre</label>
+            <select name="period" class="field-input max-w-[18rem]">
+                <option value="">Tümü</option>
+                @foreach ($periodsByFacility as $facilityName => $periods)
+                    <optgroup label="{{ $facilityName }}">
+                        @foreach ($periods as $period)
+                            <option value="{{ $period->id }}" @selected(request('period') == $period->id)>
+                                {{ $periodLabel($period) }}
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endforeach
+            </select>
+            <p class="field-hint">Birleşik devre başvuruları her iki devrede de listelenir.</p>
+        </div>
+        <div>
             <label class="field-label">Peşinat</label>
             <select name="deposit" class="field-input">
                 <option value="">Tümü</option>
@@ -57,7 +73,7 @@
             </select>
         </div>
         <button type="submit" class="btn-primary">Filtrele</button>
-        @if (request()->hasAny(['q', 'facility', 'deposit']))
+        @if (request()->hasAny(['q', 'facility', 'period', 'deposit']))
             <a href="{{ route('admin.reservations.index', ['status' => request('status')]) }}" class="btn-ghost">Temizle</a>
         @endif
     </form>

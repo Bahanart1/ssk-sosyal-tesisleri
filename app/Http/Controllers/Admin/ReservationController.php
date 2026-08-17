@@ -53,9 +53,17 @@ class ReservationController extends Controller
             });
         }
 
+        // Devre süzgeci tesise göre gruplanır; birden fazla yıl varsa etikete yıl da eklenir.
+        $periods = Period::with('facility')->ordered()->get();
+        $multipleYears = $periods->pluck('year')->unique()->count() > 1;
+
         return view('admin.reservations.index', [
             'reservations' => $query->latest()->paginate(15)->withQueryString(),
             'facilities' => Facility::ordered()->get(),
+            'periodsByFacility' => $periods->groupBy(fn (Period $p) => $p->facility->name),
+            'periodLabel' => fn (Period $p) => $p->label()
+                . ($multipleYears ? ' (' . $p->year . ')' : '')
+                . ' · ' . $p->start_date->translatedFormat('d M') . ' – ' . $p->end_date->translatedFormat('d M'),
             'counts' => Reservation::query()
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')

@@ -5,9 +5,21 @@
             <p class="section-label">Yönetim</p>
             <h1 class="page-title mt-1">Devreler</h1>
             <p class="page-subtitle">
-                Devreler pazar girişle başlar, takip eden cumartesi sona erer. Yeterli müracaat olmayan devreler
-                başvuruya kapatılabilir.
+                Devreler pazar girişle başlar, takip eden cumartesi sona erer. Doluluk oranı yalnızca
+                <strong>yer tahsis edilen</strong> başvurulardan hesaplanır; bekleyenler henüz kapasiteyi
+                işgal etmez. Dolan devreler başvuruya kapatılabilir.
             </p>
+
+            @if ($facility)
+                <p class="mt-2 text-xs text-ink-muted">
+                    {{ $facility->name }} kapasitesi:
+                    <span class="font-semibold text-ink">{{ $capacity['count'] }} ünite</span>
+                    <span class="text-ink-subtle">({{ $capacity['source'] }})</span>
+                    @if ($capacity['source'] === 'oda tipi adetleri')
+                        · <span class="text-amber-700 dark:text-amber-300">bu tesis için fiziksel oda envanteri henüz aktarılmadı</span>
+                    @endif
+                </p>
+            @endif
         </div>
 
         {{-- Tesis / yıl seçimi --}}
@@ -47,7 +59,9 @@
                                 <th>Gün</th>
                                 <th>Tarife</th>
                                 <th>Birleşim</th>
-                                <th>Başvuru</th>
+                                <th class="text-right">Tahsis</th>
+                                <th class="text-right">Bekleyen</th>
+                                <th>Doluluk</th>
                                 <th>Durum</th>
                                 <th></th>
                             </tr>
@@ -76,12 +90,45 @@
                                         @endif
                                     </td>
                                     <td class="text-xs text-ink-muted">{{ $period->combine_group ? 'Grup ' . $period->combine_group : '—' }}</td>
-                                    <td>
-                                        @php $count = $counts[$period->id] ?? 0; @endphp
+                                    @php
+                                        $tahsis  = $allocated[$period->id] ?? 0;
+                                        $bekleyen = $pending[$period->id] ?? 0;
+                                        $oran = $capacity['count'] > 0 ? min(1, $tahsis / $capacity['count']) : null;
+                                    @endphp
+
+                                    {{-- Yer tahsis edilenler: doluluğu bunlar belirler --}}
+                                    <td class="text-right">
                                         <a href="{{ route('admin.periods.show', $period) }}"
-                                           class="tabular-nums {{ $count > 0 ? 'font-semibold text-ink hover:text-accent-600 dark:hover:text-accent-400' : 'text-ink-subtle' }}">
-                                            {{ $count }}
+                                           class="tabular-nums {{ $tahsis > 0 ? 'font-semibold text-ink hover:text-accent-700 dark:hover:text-accent-300' : 'text-ink-subtle' }}">
+                                            {{ $tahsis }}
                                         </a>
+                                    </td>
+
+                                    {{-- Karara bağlanmamış başvurular --}}
+                                    <td class="text-right">
+                                        @if ($bekleyen > 0)
+                                            <a href="{{ route('admin.periods.show', $period) }}" class="badge-amber tabular-nums">{{ $bekleyen }}</a>
+                                        @else
+                                            <span class="text-ink-subtle">—</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- Doluluk oranı: devreyi kapatma kararı buna göre verilir --}}
+                                    <td>
+                                        @if ($oran === null)
+                                            <span class="text-xs text-ink-subtle">kapasite yok</span>
+                                        @else
+                                            <div class="flex items-center gap-2">
+                                                <div class="h-1.5 w-16 overflow-hidden rounded-full bg-surface-sunken">
+                                                    <div class="h-full rounded-full"
+                                                         style="width: {{ max($oran * 100, $tahsis > 0 ? 2 : 0) }}%;
+                                                                background: {{ $oran >= 1 ? 'var(--status-danger)' : ($oran >= 0.85 ? 'var(--status-warn)' : 'var(--chart-series)') }}"></div>
+                                                </div>
+                                                <span class="text-xs tabular-nums {{ $oran >= 1 ? 'font-semibold text-red-600 dark:text-red-400' : 'text-ink-muted' }}">
+                                                    %{{ round($oran * 100) }}
+                                                </span>
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         <span class="badge-{{ $period->is_open ? 'green' : 'gray' }}">{{ $period->is_open ? 'Açık' : 'Kapalı' }}</span>
