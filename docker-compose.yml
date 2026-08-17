@@ -1,29 +1,59 @@
+# =============================================================================
+# SSK Sosyal Tesisleri
+#
+#   docker compose up            → uygulama http://localhost:8000
+#   docker compose up --build    → imajı yeniden kurar
+#   docker compose down          → durdurur (veri korunur)
+#
+# Uygulama SQLite kullandığı için ayrı veritabanı servisi yoktur.
+# =============================================================================
+
 services:
   app:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
+    image: ssk-sosyal-tesisleri
     container_name: ssk-app
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    volumes:
-      - .:/var/www/html
     environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-    # Geliştirmede restart döngüsü hataları gizler; container durursa logda görünsün.
-    restart: "no"
+      # DİKKAT: APP_ENV, DB_CONNECTION gibi phpunit.xml'de de tanımlı anahtarlar
+      # burada VERİLMEZ. PHPUnit, var olan ortam değişkenlerinin üzerine kendi
+      # değerlerini yazmaz; verilirse testler "testing" yerine "local" ortamında
+      # ve gerçek veritabanına karşı koşar. Uygulama ayarları .env'den okunur.
+      #
+      # Grafiklerin dolu görünmesi için örnek başvurular üretilsin mi?
+      SEED_DEMO_RESERVATIONS: "${SEED_DEMO_RESERVATIONS:-false}"
+    volumes:
+      # Kaynak kod: konteyner içinden düzenlemeler anında görünür.
+      # vendor/ de buradan gelir — Laravel bağımlılıkları saf PHP olduğu için
+      # host'ta kurulmuş olması yeterlidir, konteynerde yeniden indirilmez.
+      - .:/var/www/html
+      # node_modules konteynere ait kalsın: esbuild gibi paketler platforma
+      # özgü ikili taşır, macOS'ta kurulanlar Linux konteynerde çalışmaz.
+      - node_modules:/var/www/html/node_modules
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') !== false ? 0 : 1);"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
-  # Geliştirme sırasında canlı asset derlemesi istersen:
-  #   docker compose --profile dev up vite
+  # Varlıkları izleyerek derlemek isterseniz:
+  #   docker compose --profile dev up
   vite:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    image: node:22-bookworm-slim
     container_name: ssk-vite
     profiles: ["dev"]
+    working_dir: /var/www/html
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
     ports:
       - "5173:5173"
     volumes:
       - .:/var/www/html
-    entrypoint: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+      - node_modules:/var/www/html/node_modules
+
+volumes:
+  node_modules:

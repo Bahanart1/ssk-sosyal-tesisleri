@@ -35,6 +35,40 @@ php artisan serve
 
 ---
 
+## Docker ile çalıştırma
+
+Makinede Docker Desktop kurulu olmalıdır:
+
+```bash
+brew install --cask docker
+```
+
+Kurulumdan sonra Docker Desktop'ı bir kez açın (ilk açılışta izin ister), ardından:
+
+```bash
+docker compose up --build
+```
+
+Uygulama **http://localhost:8000** adresinde ayağa kalkar. İlk açılış birkaç dakika sürer:
+konteyner Composer bağımlılıklarını kurar, `.env` ve uygulama anahtarını oluşturur, SQLite
+veritabanını hazırlar, migration + seed çalıştırır ve frontend varlıklarını derler.
+
+| Komut | Ne yapar |
+|---|---|
+| `docker compose up` | Uygulamayı başlatır |
+| `docker compose down` | Durdurur — veritabanı ve yüklenen belgeler korunur |
+| `docker compose up --build` | İmajı yeniden kurar (bağımlılık değişince) |
+| `SEED_DEMO_RESERVATIONS=true docker compose up` | Grafikler dolu görünsün diye örnek başvurular da üretir |
+| `docker compose --profile dev up` | Vite'ı izleme modunda da çalıştırır (5173) |
+| `docker compose exec app php artisan test` | Testleri konteyner içinde çalıştırır |
+| `docker compose exec app bash` | Konteyner kabuğu |
+
+Veritabanı SQLite olduğu için ayrı bir servis yoktur; dosya `database/database.sqlite`
+altında, yüklenen belgeler `storage/app/private` altında host makinede durur — konteyneri
+silmek veriyi silmez.
+
+---
+
 ## Alan kuralları
 
 **Devre** — Pazar girişle başlar, takip eden cumartesi sona erer; 6 gecedir (Madde 7/1).
