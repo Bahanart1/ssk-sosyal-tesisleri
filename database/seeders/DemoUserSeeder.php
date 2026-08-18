@@ -15,7 +15,7 @@ class DemoUserSeeder extends Seeder
     {
         $groups = CustomerGroup::pluck('id', 'code');
         $year = (int) now()->year;
-        $duesAmount = Setting::number('dues.annual_amount', 2500);
+        $duesAmount = Setting::number('dues.annual_amount', 200);
 
         $admin = User::updateOrCreate(['email' => 'admin@sigortader.com.tr'], [
             'name' => 'Sistem Yöneticisi',

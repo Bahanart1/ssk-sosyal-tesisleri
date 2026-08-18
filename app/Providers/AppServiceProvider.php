@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\MembershipDue;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\Reservation;
 use App\Services\Payment\FakeGateway;
 use App\Services\Payment\NestPayGateway;
@@ -32,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
                 'admin.reservations.index' => Reservation::where('status', 'pending')->count(),
                 'admin.payments.index' => Payment::where('status', 'pending')->where('method', 'bank_transfer')->count(),
                 'admin.dues.index' => MembershipDue::unpaid()->due()->count(),
+                // Havalesi yapılacak iadeler; IBAN bekleyenler yöneticinin işi değil.
+                'admin.refunds.index' => Refund::payable()->count(),
             ]);
         });
     }

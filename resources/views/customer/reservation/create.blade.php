@@ -50,7 +50,8 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('customer.reservations.store') }}" enctype="multipart/form-data" @submit="submitting = true">
+        <form method="POST" action="{{ route('customer.reservations.store') }}" enctype="multipart/form-data"
+              novalidate @submit="gonder($event)" x-ref="form">
             @csrf
             <input type="hidden" name="room_type_id" :value="roomTypeId">
             <input type="hidden" name="period_id" :value="periodId">
@@ -59,7 +60,21 @@
             <input type="hidden" name="note" :value="note">
             <input type="hidden" name="deposit_method" :value="depositMethod">
 
-            <div class="surface p-6 sm:p-8">
+            <div class="surface p-6 sm:p-8" x-ref="kart">
+
+                {{-- Eksik veya hatalı alanlar; "İleri" sessizce durmasın diye --}}
+                <div x-show="eksikler.length" x-cloak x-transition
+                     class="alert-soft mb-6 border-red-200 bg-red-50 text-red-700 ring-red-200 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800">
+                    <svg class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+                    <div>
+                        <p class="font-semibold" x-text="eksikler.length === 1 ? 'Devam etmek için bir eksik var' : 'Devam etmek için ' + eksikler.length + ' eksik var'"></p>
+                        <ul class="mt-1 list-disc space-y-0.5 pl-4">
+                            <template x-for="(mesaj, i) in eksikler" :key="i">
+                                <li x-text="mesaj"></li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
 
                 {{-- ---------------------------------------------------------- --}}
                 {{-- Adım 1 — Tesis --}}
@@ -120,7 +135,7 @@
 
                     {{-- Birleşen devre --}}
                     <template x-if="selectedPeriod && selectedPeriod.combinable_with">
-                        <label class="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-accent-200 dark:border-accent-800 bg-accent-50 dark:bg-accent-900/30/50 px-4 py-3.5">
+                        <label class="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-accent-200 dark:border-accent-800 bg-accent-50 dark:bg-accent-900/30 px-4 py-3.5">
                             <input type="checkbox" :checked="secondPeriodId !== null" @change="toggleSecondPeriod()"
                                    class="mt-0.5 rounded border-line text-accent-600 dark:text-accent-400 focus:ring-accent-500">
                             <span class="text-sm">
@@ -244,7 +259,8 @@
                                     </div>
                                     <div class="sm:col-span-2">
                                         <label class="field-label">Kimlik belgesi <span class="text-red-500">*</span></label>
-                                        <input type="file" :name="'guests['+index+'][document]'" accept=".jpg,.jpeg,.png,.pdf" required
+                                        <input type="file" :name="'guests['+index+'][document]'" accept=".jpg,.jpeg,.png,.pdf"
+                                               @change="guest.belge = $event.target.files.length > 0; temizle()"
                                                class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
                                         <p class="field-hint">JPG, PNG veya PDF · en fazla 5 MB. Belgeler yalnızca yetkili personelce görüntülenir.</p>
                                     </div>
@@ -392,7 +408,7 @@
                                 <div>
                                     <label class="field-label">Banka dekontu <span class="text-red-500">*</span></label>
                                     <input type="file" name="deposit_receipt" accept=".jpg,.jpeg,.png,.pdf"
-                                           :required="depositMethod === 'bank_transfer'"
+                                           @change="dekont = $event.target.files.length > 0; temizle()"
                                            class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
                                     <p class="field-hint">Dekontunuzu 1 yıl süreyle saklamanız gerekir.</p>
                                 </div>
@@ -439,13 +455,58 @@
                 <button type="button" @click="back()" x-show="step > 1" x-cloak class="btn-secondary">Geri</button>
                 <span x-show="step === 1"></span>
 
-                <button type="button" @click="next()" x-show="step < 6" :disabled="!canProceed" class="btn-primary min-w-[7.5rem]">İleri</button>
-                <button type="submit" x-show="step === 6" x-cloak :disabled="submitting || !quote" class="btn-accent min-w-[12rem]">
+                <button type="button" @click="next()" x-show="step < 6" class="btn-primary min-w-[7.5rem]">İleri</button>
+                <button type="submit" x-show="step === 6" x-cloak :disabled="submitting" class="btn-accent min-w-[12rem]">
                     <span x-show="!submitting">Müracaatı Gönder</span>
                     <span x-show="submitting" x-cloak>Gönderiliyor…</span>
                 </button>
             </div>
         </form>
+
+        {{--
+            Eksik alan uyarısı ayrıca ekranın ortasında bir pencere olarak çıkar.
+            Kart içindeki kutu sayfanın üstünde kalabildiğinden, üyenin uyarıyı
+            kaçırmaması için modal da gösteriliyor.
+        --}}
+        <template x-teleport="body">
+            <div x-show="popup" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+                 @keydown.escape.window="kapat()" role="alertdialog" aria-modal="true">
+                <div class="modal-scrim" @click="kapat()"></div>
+
+                <div class="modal-panel !max-w-md" x-transition>
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
+                            <svg class="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-display text-lg font-semibold text-ink"
+                                x-text="eksikler.length === 1 ? 'Bir eksik var' : eksikler.length + ' eksik var'"></h3>
+                            <p class="mt-1 text-sm text-ink-muted">
+                                Devam edebilmek için aşağıdakileri tamamlamanız gerekiyor:
+                            </p>
+                        </div>
+                    </div>
+
+                    <ul class="mt-4 space-y-2">
+                        <template x-for="(mesaj, i) in eksikler" :key="i">
+                            <li class="flex items-start gap-2 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
+                                <span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-500"></span>
+                                <span x-text="mesaj"></span>
+                            </li>
+                        </template>
+                    </ul>
+
+                    <p class="mt-4 rounded-lg bg-surface-alt px-3 py-2 text-xs text-ink-muted" x-show="yonlendirildi" x-cloak>
+                        Sizi eksiğin bulunduğu adıma getirdik:
+                        <strong class="text-ink" x-text="step + '. adım · ' + stepLabels[step - 1]"></strong>
+                    </p>
+
+                    <button type="button" @click="kapat()" x-ref="popupKapat" class="btn-primary mt-5 w-full">
+                        Tamam, düzelteyim
+                    </button>
+                </div>
+            </div>
+        </template>
     </div>
 
     <script>
@@ -465,6 +526,7 @@
                 relation: 'self',
                 customer_group_id: defaultGroupId,
                 wants_meal: false,
+                belge: false,
                 ...overrides,
             });
 
@@ -487,6 +549,12 @@
                 quote: null,
                 quoteLoading: false,
                 quoteError: null,
+
+                // Doldurulmayan alanlar; boşken hata kutusu gizlidir.
+                eksikler: [],
+                popup: false,
+                yonlendirildi: false,
+                dekont: false,
 
                 // ----- türetilmiş değerler -----
                 get selectedFacility() {
@@ -518,17 +586,97 @@
                     return this.guests.length > 0 && this.guests.every(g =>
                         g.full_name.trim() && /^\d{11}$/.test(g.tc_no) && g.birth_date && g.customer_group_id);
                 },
-                get canProceed() {
-                    if (this.step === 1) return !!this.facilityId;
-                    if (this.step === 2) return !!this.periodId;
-                    if (this.step === 3) return !!this.roomTypeId && (!this.groundFloorRequest || this.groundFloorNote.trim().length > 0);
-                    if (this.step === 4) return this.guestsComplete && this.guests.length <= this.capacity;
-                    if (this.step === 5) return !!this.quote && !this.quoteLoading;
-                    return true;
+
+                /**
+                 * Bir adımın eksiklerini insan diliyle döndürür. Boş dizi = adım tamam.
+                 * Kişi eksikleri "2. kişi" diye numaralandırılır ki üye hangi satıra
+                 * bakacağını bilsin.
+                 */
+                denetle(adim) {
+                    const eksik = [];
+
+                    if (adim === 1 && !this.facilityId) {
+                        eksik.push('Konaklamak istediğiniz tesisi seçin.');
+                    }
+
+                    if (adim === 2 && !this.periodId) {
+                        eksik.push('Bir devre seçin.');
+                    }
+
+                    if (adim === 3) {
+                        if (!this.roomTypeId) {
+                            eksik.push('Bir oda tipi seçin.');
+                        }
+                        if (this.groundFloorRequest && !this.groundFloorNote.trim()) {
+                            eksik.push('Alt kat talebiniz için mazeretinizi kısaca yazın.');
+                        }
+                    }
+
+                    if (adim === 4) {
+                        this.guests.forEach((g, i) => {
+                            const kim = (i + 1) + '. kişi';
+
+                            if (!g.full_name.trim()) eksik.push(kim + ': ad soyad girilmedi.');
+                            if (!g.tc_no.trim()) {
+                                eksik.push(kim + ': TC kimlik numarası girilmedi.');
+                            } else if (!/^\d{11}$/.test(g.tc_no)) {
+                                eksik.push(kim + ': TC kimlik numarası 11 rakam olmalı.');
+                            }
+                            if (!g.birth_date) eksik.push(kim + ': doğum tarihi seçilmedi.');
+                            if (!g.customer_group_id) eksik.push(kim + ': müşteri grubu seçilmedi.');
+                            if (!g.belge) eksik.push(kim + ': kimlik belgesi eklenmedi.');
+                        });
+
+                        if (this.guests.length > this.capacity) {
+                            eksik.push('Seçtiğiniz oda en fazla ' + this.capacity + ' kişiliktir; ' +
+                                this.guests.length + ' kişi eklediniz.');
+                        }
+                    }
+
+                    if (adim === 5) {
+                        if (this.quoteLoading) {
+                            eksik.push('Ücret hesaplanıyor, birkaç saniye bekleyin.');
+                        } else if (!this.quote) {
+                            eksik.push(this.quoteError || 'Ücret hesaplanamadı; seçimlerinizi gözden geçirin.');
+                        }
+                        if (this.depositMethod === 'bank_transfer' && !this.dekont) {
+                            eksik.push('Havale/EFT seçtiniz; banka dekontunu ekleyin.');
+                        }
+                    }
+
+                    return eksik;
                 },
+
+                /** Hata kutusunu kapatır — kullanıcı eksiği düzeltmeye başlayınca. */
+                temizle() {
+                    this.eksikler = [];
+                    this.popup = false;
+                },
+
+                /**
+                 * Eksikleri hem kartın üstündeki kutuda hem de ekranın ortasındaki
+                 * pencerede gösterir. Gönderim sırasında başka bir adıma
+                 * atlandıysa pencere bunu ayrıca söyler.
+                 */
+                uyar(eksik, yonlendirildi = false) {
+                    this.eksikler = eksik;
+                    this.yonlendirildi = yonlendirildi;
+                    this.popup = true;
+
+                    this.$nextTick(() => this.$refs.popupKapat?.focus());
+                },
+
+                /** Pencere kapanınca eksiklerin listelendiği karta kaydırır. */
+                kapat() {
+                    this.popup = false;
+                    this.$refs.kart?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                },
+
 
                 // ----- seçim -----
                 selectFacility(f) {
+                    this.temizle();
+
                     if (this.facilityId === f.id) return;
                     this.facilityId = f.id;
                     this.periodId = null;
@@ -537,6 +685,7 @@
                     this.quote = null;
                 },
                 selectPeriod(p) {
+                    this.temizle();
                     this.periodId = p.id;
                     this.secondPeriodId = null;
                     this.quote = null;
@@ -546,6 +695,7 @@
                     this.quote = null;
                 },
                 selectRoomType(rt) {
+                    this.temizle();
                     this.roomTypeId = rt.id;
                     if (this.guests.length > rt.capacity) {
                         this.guests = this.guests.slice(0, rt.capacity);
@@ -641,12 +791,46 @@
 
                 // ----- gezinme -----
                 next() {
-                    if (!this.canProceed) return;
+                    const eksik = this.denetle(this.step);
+
+                    if (eksik.length) {
+                        this.uyar(eksik);
+
+                        return;
+                    }
+
+                    this.temizle();
+
                     if (this.step === 4) this.refreshQuote();
                     this.step++;
                 },
                 back() {
+                    this.temizle();
                     this.step--;
+                },
+
+                /**
+                 * Gönderimden önce tüm adımlar yeniden denetlenir. Eksik varsa
+                 * form gönderilmez; kullanıcı eksiğin bulunduğu adıma götürülür.
+                 * (Tarayıcının kendi doğrulaması gizli alanlarda sessiz kalıyordu.)
+                 */
+                gonder(event) {
+                    for (const adim of [1, 2, 3, 4, 5]) {
+                        const eksik = this.denetle(adim);
+
+                        if (eksik.length) {
+                            event.preventDefault();
+
+                            const atlandi = this.step !== adim;
+                            this.step = adim;
+                            this.uyar(eksik, atlandi);
+
+                            return;
+                        }
+                    }
+
+                    this.temizle();
+                    this.submitting = true;
                 },
             };
         }

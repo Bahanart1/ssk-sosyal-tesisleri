@@ -68,16 +68,36 @@
                                     <button type="submit" class="btn-primary !px-3 !py-1.5 text-xs">Kaydet</button>
                                 </form>
                                 @error('room_id') <p class="field-error">{{ $message }}</p> @enderror
-                                <p class="mt-1.5 text-[11px] text-ink-subtle">
-                                    @if ($bosSayisi > 0)
-                                        {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
-                                        için {{ $bosSayisi }} {{ $reservation->roomType->name }} seçilebilir.
-                                        <a href="{{ route('admin.rooms.index', ['tesis' => $reservation->facility->slug, 'devre' => $reservation->period_id]) }}"
-                                           class="hover:underline">Blok görünümü</a>
-                                    @else
-                                        Bu devrede boşta {{ $reservation->roomType->name }} kalmadı.
+                                <div class="mt-1.5 space-y-1 text-[11px] text-ink-subtle">
+                                    <p>
+                                        @if ($bosSayisi > 0)
+                                            {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
+                                            için {{ $bosSayisi }} {{ $reservation->roomType->name }} seçilebilir.
+                                            <a href="{{ route('admin.rooms.index', ['tesis' => $reservation->facility->slug, 'devre' => $reservation->period_id]) }}"
+                                               class="hover:underline">Blok görünümü</a>
+                                        @else
+                                            Bu devrede boşta {{ $reservation->roomType->name }} kalmadı.
+                                        @endif
+                                    </p>
+
+                                    {{-- Listede neden yalnızca bazı blokların çıktığını açıklar --}}
+                                    @if ($roomTypeBlocks)
+                                        <p>
+                                            Bu oda tipi yalnızca şu bloklarda bulunuyor:
+                                            <strong class="text-ink-muted">{{ implode(', ', $roomTypeBlocks) }}</strong>.
+                                        </p>
                                     @endif
-                                </p>
+
+                                    @if ($alternateTypes->isNotEmpty())
+                                        <p>
+                                            Aynı yatak sayısında
+                                            <strong class="text-ink-muted">{{ $alternateTypes->pluck('name')->join(', ') }}</strong>
+                                            de var; ücreti farklı olduğu için bu listede çıkmaz.
+                                            Gerekiyorsa önce
+                                            <a href="{{ route('admin.reservations.edit', $reservation) }}" class="hover:underline">oda tipini değiştirin</a>.
+                                        </p>
+                                    @endif
+                                </div>
                             @endif
                         </div>
                         <div class="flex justify-between gap-4 px-6 py-3 text-sm">

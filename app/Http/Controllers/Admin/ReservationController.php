@@ -10,6 +10,7 @@ use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Services\RefundService;
 use App\Services\ReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,12 +19,56 @@ use Throwable;
 
 class ReservationController extends Controller
 {
-    public function __construct(private readonly ReservationService $reservations) {}
+    /**
+     * Başvurunun iş akışındaki durağı. Her başvuru tam olarak bir aşamaya
+     * düşer; sekmeler bu sırayla dizilir ve her biri yöneticinin sıradaki
+     * işini gösterir.
+     */
+    private const STAGES = [
+        'deposit' => [
+            'label' => 'Peşinat onayı bekliyor',
+            'hint' => 'Üye peşinatını gönderdi. Dekontu inceleyip peşinatı onaylayın.',
+        ],
+        'review' => [
+            'label' => 'Yer tahsisi bekliyor',
+            'hint' => 'Peşinatı onaylandı. Başvuruyu inceleyip yer tahsis edin; gerekirse oda tipini ve tutarı düzeltin.',
+        ],
+        'balance' => [
+            'label' => 'Bakiye ödemesi bekliyor',
+            'hint' => 'Yer tahsis edildi, üyenin kalan tutarı ödemesi bekleniyor. Yönetici işlemi gerekmiyor.',
+        ],
+        'room' => [
+            'label' => 'Oda ataması bekliyor',
+            'hint' => 'Ödemesi tamamlandı. Oda sütunundan blok ve oda numarası seçin.',
+        ],
+        'done' => [
+            'label' => 'Tamamlandı',
+            'hint' => 'Ödemesi alındı ve odası atandı. Bu başvurularda yapılacak bir işlem kalmadı.',
+        ],
+        'closed' => [
+            'label' => 'Reddedildi / İptal',
+            'hint' => 'Karara bağlanmış, kapanmış başvurular.',
+        ],
+    ];
+
+    public function __construct(
+        private readonly ReservationService $reservations,
+        private readonly RefundService $refunds,
+    ) {}
 
     public function index(Request $request)
     {
         $query = Reservation::with(['user', 'facility', 'roomType', 'room', 'period', 'secondPeriod'])
             ->withCount('guests');
+
+        // Aşama sekmeleri; status/deposit/room parametreleri de ayrıca çalışır.
+        $stage = array_key_exists((string) $request->get('stage'), self::STAGES)
+            ? $request->get('stage')
+            : null;
+
+        if ($stage) {
+            $this->applyStage($query, $stage);
+        }
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -73,11 +118,92 @@ class ReservationController extends Controller
             'periodLabel' => fn (Period $p) => $p->label()
                 . ($multipleYears ? ' (' . $p->year . ')' : '')
                 . ' · ' . $p->start_date->translatedFormat('d M') . ' – ' . $p->end_date->translatedFormat('d M'),
-            'counts' => Reservation::query()
-                ->selectRaw('status, count(*) as total')
-                ->groupBy('status')
-                ->pluck('total', 'status'),
+            'stages' => self::STAGES,
+            'stage' => $stage,
+            'stageCounts' => $this->stageCounts(),
         ]);
+    }
+
+    /**
+     * Bu oda tipinin fiziksel olarak bulunduğu bloklar. Doluluktan bağımsızdır;
+     * "neden yalnızca şu blok çıkıyor" sorusunu ekranda yanıtlamak için.
+     *
+     * @return list<string>
+     */
+    private function blocksOfType(Reservation $reservation): array
+    {
+        return Room::where('facility_id', $reservation->facility_id)
+            ->where('room_type_id', $reservation->room_type_id)
+            ->where('is_active', true)
+            ->distinct()
+            ->orderBy('block')
+            ->pluck('block')
+            ->all();
+    }
+
+    /**
+     * Aynı yatak sayısına sahip diğer oda tipleri (tipik olarak zemin kat
+     * karşılığı). Ücreti değiştirdikleri için atama listesine karışmazlar;
+     * yönetici bunları ancak oda tipini değiştirerek kullanabilir.
+     *
+     * @return \Illuminate\Support\Collection<int, RoomType>
+     */
+    private function alternateTypes(Reservation $reservation)
+    {
+        return RoomType::where('facility_id', $reservation->facility_id)
+            ->where('kind', 'room')
+            ->where('bed_count', $reservation->roomType->bed_count)
+            ->whereKeyNot($reservation->room_type_id)
+            ->active()
+            ->has('rooms')
+            ->ordered()
+            ->get();
+    }
+
+    /** Aşama koşullarını sorguya uygular. */
+    private function applyStage($query, string $stage): void
+    {
+        match ($stage) {
+            // Dekont reddedilmişse üye yenisini göndereceği için yine bu aşamadadır.
+            'deposit' => $query->where('status', 'pending')->where('deposit_status', '!=', 'verified'),
+            'review' => $query->where('status', 'pending')->where('deposit_status', 'verified'),
+            'balance' => $query->where('status', 'approved'),
+            'room' => $query->where('status', 'paid')->whereNull('room_id'),
+            'done' => $query->where('status', 'paid')->whereNotNull('room_id'),
+            'closed' => $query->whereIn('status', ['rejected', 'cancelled']),
+        };
+    }
+
+    /**
+     * Sekme rozetleri. Tek bir toplu sorgudan hesaplanır; aşama sayısı kadar
+     * ayrı sayım sorgusu atmaya gerek yok.
+     *
+     * @return array<string, int>
+     */
+    private function stageCounts(): array
+    {
+        $counts = array_fill_keys(array_keys(self::STAGES), 0);
+
+        $rows = Reservation::query()
+            ->selectRaw('status, deposit_status, room_id is null as odasiz, count(*) as total')
+            ->groupBy('status', 'deposit_status', 'odasiz')
+            ->get();
+
+        foreach ($rows as $row) {
+            $stage = match (true) {
+                in_array($row->status, ['rejected', 'cancelled'], true) => 'closed',
+                $row->status === 'pending' => $row->deposit_status === 'verified' ? 'review' : 'deposit',
+                $row->status === 'approved' => 'balance',
+                $row->status === 'paid' => $row->odasiz ? 'room' : 'done',
+                default => null,
+            };
+
+            if ($stage) {
+                $counts[$stage] += (int) $row->total;
+            }
+        }
+
+        return $counts;
     }
 
     public function show(Reservation $reservation)
@@ -90,6 +216,8 @@ class ReservationController extends Controller
         return view('admin.reservations.show', [
             'reservation' => $reservation,
             'availableRooms' => $this->availableRooms($reservation),
+            'roomTypeBlocks' => $this->blocksOfType($reservation),
+            'alternateTypes' => $this->alternateTypes($reservation),
         ]);
     }
 
@@ -298,7 +426,11 @@ class ReservationController extends Controller
             'approved_by' => Auth::id(),
         ]);
 
-        return back()->with('success', 'Başvuru iptal edildi.');
+        $refund = $this->refunds->open($reservation, 'cancelled');
+
+        return back()->with('success', $refund
+            ? 'Başvuru iptal edildi. İade kaydı açıldı; üyeden IBAN bilgisi istenecek.'
+            : 'Başvuru iptal edildi.');
     }
 
     /**

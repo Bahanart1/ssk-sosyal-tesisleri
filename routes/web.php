@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PeriodController;
 use App\Http\Controllers\Admin\ReservationController as AdminReservationController;
+use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TariffController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Customer\DashboardController as CustomerDashboardContro
 use App\Http\Controllers\Customer\DuesController as CustomerDuesController;
 use App\Http\Controllers\Customer\PaymentController as CustomerPaymentController;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
+use App\Http\Controllers\Customer\RefundController as CustomerRefundController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\PaymentFlowController;
@@ -88,6 +90,7 @@ Route::middleware(['auth', 'role:customer'])->prefix('panel')->name('customer.')
     Route::post('/basvuru', [CustomerReservationController::class, 'store'])->name('reservations.store');
     Route::get('/basvuru/{reservation}', [CustomerReservationController::class, 'show'])->name('reservations.show');
     Route::post('/basvuru/{reservation}/iptal', [CustomerReservationController::class, 'cancel'])->name('reservations.cancel');
+    Route::put('/iade/{refund}', [CustomerRefundController::class, 'update'])->name('refunds.update');
 
     Route::get('/basvuru/{reservation}/odeme', [CustomerPaymentController::class, 'show'])->name('payment.show');
     Route::post('/basvuru/{reservation}/odeme/kart', [CustomerPaymentController::class, 'card'])->name('payment.card');
@@ -144,6 +147,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update');
 
         // Oda envanteri
+        Route::get('/iadeler', [AdminRefundController::class, 'index'])->name('refunds.index');
+        Route::post('/iadeler/{refund}/ode', [AdminRefundController::class, 'pay'])->name('refunds.pay');
+
         Route::get('/odalar', [RoomController::class, 'index'])->name('rooms.index');
         Route::put('/odalar/{room}', [RoomController::class, 'update'])->name('rooms.update');
 

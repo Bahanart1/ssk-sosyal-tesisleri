@@ -6,84 +6,116 @@
         <p class="page-subtitle">Müracaatları inceleyin, düzenleyin ve yer tahsisi yapın.</p>
     </div>
 
-    {{-- Durum sekmeleri --}}
-    @php
-        $tabs = [
-            '' => 'Tümü',
-            'pending' => 'İnceleniyor',
-            'approved' => 'Yer tahsis edildi',
-            'paid' => 'Ödendi',
-            'rejected' => 'Reddedildi',
-            'cancelled' => 'İptal',
-        ];
-    @endphp
+    {{-- İş akışı sekmeleri: her başvuru tam olarak bir aşamada durur --}}
+    <div class="surface mb-5 overflow-hidden">
+        {{-- gap-px + arka plan, sarma sonrası da düzgün ayraç verir --}}
+        <div class="grid grid-cols-2 gap-px bg-line sm:grid-cols-4 xl:grid-cols-7">
+            @php
+                $tumu = array_sum($stageCounts);
+                $aktifYok = $stage === null;
+            @endphp
 
-    <div class="mb-5 flex flex-wrap gap-2">
-        @foreach ($tabs as $value => $label)
-            @php $active = (string) request('status') === (string) $value; @endphp
-            <a href="{{ route('admin.reservations.index', array_filter(['status' => $value ?: null] + request()->except(['status', 'page']))) }}"
-               class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all {{ $active ? 'bg-accent-600 text-white' : 'bg-surface text-ink ring-1 ring-line hover:bg-surface-alt' }}">
-                {{ $label }}
-                @if ($value && isset($counts[$value]))
-                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $active ? 'bg-white/15' : 'bg-surface-sunken' }}">{{ $counts[$value] }}</span>
-                @endif
+            <a href="{{ route('admin.reservations.index', request()->except(['stage', 'page'])) }}"
+               class="flex flex-col gap-0.5 px-4 py-3 transition-colors {{ $aktifYok ? 'bg-accent-50 dark:bg-accent-900/25' : 'bg-surface hover:bg-surface-alt' }}">
+                <span class="text-lg font-semibold tabular-nums text-ink">{{ $tumu }}</span>
+                <span class="text-[11px] font-medium {{ $aktifYok ? 'text-accent-700 dark:text-accent-300' : 'text-ink-muted' }}">Tümü</span>
             </a>
-        @endforeach
+
+            @foreach ($stages as $key => $tanim)
+                @php $aktif = $stage === $key; @endphp
+                <a href="{{ route('admin.reservations.index', ['stage' => $key] + request()->except(['stage', 'status', 'page'])) }}"
+                   class="flex flex-col gap-0.5 px-4 py-3 transition-colors {{ $aktif ? 'bg-accent-50 dark:bg-accent-900/25' : 'bg-surface hover:bg-surface-alt' }}"
+                   title="{{ $tanim['hint'] }}">
+                    <span class="text-lg font-semibold tabular-nums {{ $stageCounts[$key] > 0 && ! in_array($key, ['done', 'closed', 'balance'], true) ? 'text-ink' : 'text-ink-muted' }}">
+                        {{ $stageCounts[$key] }}
+                    </span>
+                    <span class="text-[11px] font-medium leading-tight {{ $aktif ? 'text-accent-700 dark:text-accent-300' : 'text-ink-muted' }}">
+                        {{ $tanim['label'] }}
+                    </span>
+                </a>
+            @endforeach
+
+            {{-- 7 sekme 2 ve 4 sütuna tam bölünmediği için son gözü doldurur --}}
+            <div class="bg-surface xl:hidden"></div>
+        </div>
+
+        @if ($stage)
+            <p class="border-t border-line bg-surface-alt px-4 py-2.5 text-xs text-ink-muted">
+                {{ $stages[$stage]['hint'] }}
+            </p>
+        @endif
     </div>
 
     {{-- Filtreler --}}
-    <form method="GET" class="surface mb-6 flex flex-wrap items-end gap-3 p-4">
-        <input type="hidden" name="status" value="{{ request('status') }}">
-        <div class="min-w-[14rem] flex-1">
-            <label class="field-label">Ara</label>
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="Başvuru no, ad, TC veya üyelik no" class="field-input">
+    @php
+        $filtreVar = request()->hasAny(['q', 'facility', 'period', 'room', 'deposit']);
+    @endphp
+
+    <form method="GET" class="surface mb-6 p-4">
+        <input type="hidden" name="stage" value="{{ $stage }}">
+
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="sm:col-span-2 xl:col-span-1">
+                <label for="f-q" class="field-label">Ara</label>
+                <input id="f-q" type="text" name="q" value="{{ request('q') }}"
+                       placeholder="Başvuru no, ad, TC veya üyelik no" class="field-input">
+            </div>
+
+            <div>
+                <label for="f-facility" class="field-label">Tesis</label>
+                <select id="f-facility" name="facility" class="field-input">
+                    <option value="">Tüm tesisler</option>
+                    @foreach ($facilities as $facility)
+                        <option value="{{ $facility->id }}" @selected(request('facility') == $facility->id)>{{ $facility->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="f-period" class="field-label">Devre</label>
+                <select id="f-period" name="period" class="field-input"
+                        title="Birleşik devre başvuruları her iki devrede de listelenir.">
+                    <option value="">Tüm devreler</option>
+                    @foreach ($periodsByFacility as $facilityName => $periods)
+                        <optgroup label="{{ $facilityName }}">
+                            @foreach ($periods as $period)
+                                <option value="{{ $period->id }}" @selected(request('period') == $period->id)>
+                                    {{ $periodLabel($period) }}
+                                </option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="f-deposit" class="field-label">Peşinat</label>
+                <select id="f-deposit" name="deposit" class="field-input">
+                    <option value="">Tüm peşinat durumları</option>
+                    <option value="pending" @selected(request('deposit') === 'pending')>Bekliyor</option>
+                    <option value="verified" @selected(request('deposit') === 'verified')>Doğrulandı</option>
+                    <option value="rejected" @selected(request('deposit') === 'rejected')>Reddedildi</option>
+                </select>
+            </div>
         </div>
-        <div>
-            <label class="field-label">Tesis</label>
-            <select name="facility" class="field-input">
-                <option value="">Tümü</option>
-                @foreach ($facilities as $facility)
-                    <option value="{{ $facility->id }}" @selected(request('facility') == $facility->id)>{{ $facility->name }}</option>
-                @endforeach
-            </select>
+
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+            <p class="text-xs text-ink-muted">
+                <strong class="tabular-nums text-ink">{{ $reservations->total() }}</strong>
+                {{ $filtreVar || $stage ? 'başvuru eşleşti' : 'başvuru' }}
+
+                @if (request('period'))
+                    <span class="text-ink-subtle">· Birleşik devre başvuruları her iki devrede de listelenir.</span>
+                @endif
+            </p>
+
+            <div class="flex items-center gap-2">
+                @if ($filtreVar)
+                    <a href="{{ route('admin.reservations.index', array_filter(['stage' => $stage])) }}" class="btn-ghost !px-3 !py-1.5 text-xs">Temizle</a>
+                @endif
+                <button type="submit" class="btn-primary !px-4 !py-1.5 text-xs">Filtrele</button>
+            </div>
         </div>
-        <div>
-            <label class="field-label">Devre</label>
-            <select name="period" class="field-input max-w-[18rem]">
-                <option value="">Tümü</option>
-                @foreach ($periodsByFacility as $facilityName => $periods)
-                    <optgroup label="{{ $facilityName }}">
-                        @foreach ($periods as $period)
-                            <option value="{{ $period->id }}" @selected(request('period') == $period->id)>
-                                {{ $periodLabel($period) }}
-                            </option>
-                        @endforeach
-                    </optgroup>
-                @endforeach
-            </select>
-            <p class="field-hint">Birleşik devre başvuruları her iki devrede de listelenir.</p>
-        </div>
-        <div>
-            <label class="field-label">Oda</label>
-            <select name="room" class="field-input">
-                <option value="">Tümü</option>
-                <option value="unassigned" @selected(request('room') === 'unassigned')>Atanmadı</option>
-                <option value="assigned" @selected(request('room') === 'assigned')>Atandı</option>
-            </select>
-        </div>
-        <div>
-            <label class="field-label">Peşinat</label>
-            <select name="deposit" class="field-input">
-                <option value="">Tümü</option>
-                <option value="pending" @selected(request('deposit') === 'pending')>Bekliyor</option>
-                <option value="verified" @selected(request('deposit') === 'verified')>Doğrulandı</option>
-                <option value="rejected" @selected(request('deposit') === 'rejected')>Reddedildi</option>
-            </select>
-        </div>
-        <button type="submit" class="btn-primary">Filtrele</button>
-        @if (request()->hasAny(['q', 'facility', 'period', 'room', 'deposit']))
-            <a href="{{ route('admin.reservations.index', ['status' => request('status')]) }}" class="btn-ghost">Temizle</a>
-        @endif
     </form>
 
     <div class="surface overflow-hidden">

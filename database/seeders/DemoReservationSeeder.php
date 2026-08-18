@@ -39,7 +39,7 @@ class DemoReservationSeeder extends Seeder
         ];
 
         $year = (int) now()->year;
-        $duesAmount = \App\Models\Setting::number('dues.annual_amount', 2500);
+        $duesAmount = \App\Models\Setting::number('dues.annual_amount', 200);
         $adminId = User::where('role', 'admin')->value('id');
 
         $customers = collect($names)->map(function (string $name, int $i) use ($groups, $year, $duesAmount, $adminId) {

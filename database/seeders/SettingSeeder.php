@@ -36,11 +36,12 @@ class SettingSeeder extends Seeder
             ['ground_floor.discount_rate', 0.10, 'ucretlendirme', 'Çolaklı zemin kat iki kişilik oda indirimi'],
 
             // --- Üyelik aidatı (Madde 5/10) ---
-            ['dues.annual_amount', 2500, 'aidat', 'Yıllık üyelik aidatı (varsayılan tahakkuk tutarı)'],
+            ['dues.annual_amount', 200, 'aidat', 'Yıllık üyelik aidatı (varsayılan tahakkuk tutarı)'],
 
             // --- Ödeme ve iptal ---
             ['balance.due_days', 15, 'odeme', 'Yer tahsisi bildiriminden sonra bakiye ödeme süresi (gün)'],
             ['cancellation.min_days_before', 10, 'odeme', 'İptal için devre başlangıcına kalması gereken asgari gün'],
+            ['refund.cancellation_fee', 0, 'odeme', 'Üye iptalinde iadeden düşülen kırtasiye ve hizmet bedeli (₺)'],
 
             // --- Talep toplama penceresi (bilgilendirme amaçlı; başvuru yıl boyu açıktır) ---
             ['application.window', ['start' => '2026-02-01', 'end' => '2026-03-31'], 'genel', 'Talep toplama dönemi'],

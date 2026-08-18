@@ -81,6 +81,12 @@ class Reservation extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /** Karara bağlanan başvurunun iade kaydı (varsa). */
+    public function refund()
+    {
+        return $this->hasOne(Refund::class);
+    }
+
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');

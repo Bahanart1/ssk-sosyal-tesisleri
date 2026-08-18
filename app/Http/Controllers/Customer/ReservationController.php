@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\Setting;
 use App\Services\PaymentService;
+use App\Services\RefundService;
 use App\Services\ReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ class ReservationController extends Controller
     public function __construct(
         private readonly ReservationService $reservations,
         private readonly PaymentService $payments,
+        private readonly RefundService $refunds,
     ) {}
 
     /** Üyenin tüm başvuruları. */
@@ -151,7 +153,7 @@ class ReservationController extends Controller
 
         $reservation->load([
             'facility', 'roomType', 'room', 'period', 'secondPeriod',
-            'guests.customerGroup', 'payments',
+            'guests.customerGroup', 'payments', 'refund',
         ]);
 
         return view('customer.reservation.show', [
@@ -176,8 +178,12 @@ class ReservationController extends Controller
                 . 'Müşteri tarafından iptal edildi: ' . $request->input('reason', '-')),
         ]);
 
-        return redirect()->route('customer.dashboard')
-            ->with('success', 'Başvurunuz iptal edildi. İade işlemleri için Dernek ile iletişime geçin.');
+        $refund = $this->refunds->open($reservation, 'cancelled');
+
+        return redirect()->route('customer.reservations.show', $reservation)
+            ->with('success', $refund
+                ? 'Başvurunuz iptal edildi. İade için hesap bilgilerinizi bu sayfadan bildirin.'
+                : 'Başvurunuz iptal edildi.');
     }
 
     /**

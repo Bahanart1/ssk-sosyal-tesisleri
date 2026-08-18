@@ -147,6 +147,92 @@
             </div>
         </div>
 
+        {{-- İade — yalnızca karara bağlanmış ve parası tahsil edilmiş başvurularda --}}
+        @if ($reservation->refund)
+            @php $iade = $reservation->refund; @endphp
+
+            <div class="surface mb-6 overflow-hidden">
+                <div class="border-b border-line px-6 py-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h2 class="font-display text-lg font-semibold text-ink">Peşinat iadesi</h2>
+                            <p class="text-xs text-ink-muted">{{ $iade->reasonLabel() }}</p>
+                        </div>
+                        <span class="badge-{{ $iade->isPaid() ? 'green' : ($iade->status === 'pending' ? 'accent' : 'amber') }}">
+                            {{ $iade->statusLabel() }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="divide-y divide-line">
+                    <div class="flex justify-between px-6 py-3 text-sm">
+                        <span class="text-ink-muted">Tahsil edilen</span>
+                        <x-money :value="$iade->gross_amount" class="text-ink" />
+                    </div>
+                    @if ((float) $iade->deduction > 0)
+                        <div class="flex justify-between px-6 py-3 text-sm">
+                            <span class="text-ink-muted">Kırtasiye ve hizmet bedeli</span>
+                            <span class="text-ink">− <x-money :value="$iade->deduction" /></span>
+                        </div>
+                    @endif
+                    <div class="flex justify-between px-6 py-3.5 text-sm">
+                        <span class="font-semibold text-ink-muted">İade edilecek</span>
+                        <x-money :value="$iade->amount" class="font-semibold text-ink" />
+                    </div>
+                </div>
+
+                <div class="border-t border-line p-6">
+                    @if ($iade->isPaid())
+                        <div class="alert-soft border-teal-200 bg-teal-50 text-teal-800 ring-teal-200 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200 dark:ring-teal-800">
+                            <div>
+                                <p class="font-semibold">İade {{ $iade->paid_at->translatedFormat('d F Y') }} tarihinde yapıldı.</p>
+                                <p class="mt-1 text-xs">
+                                    {{ $iade->ibanFormatted() }} · {{ $iade->account_holder }}
+                                    @if ($iade->reference_no) · Referans {{ $iade->reference_no }} @endif
+                                </p>
+                                <p class="mt-1 text-xs">Hesabınıza geçmediyse Dernek ile iletişime geçin.</p>
+                            </div>
+                        </div>
+                    @else
+                        <form method="POST" action="{{ route('customer.refunds.update', $iade) }}" class="space-y-4">
+                            @csrf
+                            @method('PUT')
+
+                            <p class="text-sm text-ink-muted">
+                                @if ($iade->status === 'awaiting_iban')
+                                    İadenin yapılabilmesi için hesap bilgilerinizi bildirin. Hesabın size ait olması gerekir.
+                                @else
+                                    Hesap bilgileriniz alındı; iade bu hesaba yapılacaktır. Gerekirse aşağıdan güncelleyebilirsiniz.
+                                @endif
+                            </p>
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div class="sm:col-span-2">
+                                    <label for="iban" class="field-label">IBAN</label>
+                                    <input id="iban" type="text" name="iban" maxlength="34" required
+                                           value="{{ old('iban', $iade->ibanFormatted()) }}"
+                                           placeholder="TR00 0000 0000 0000 0000 0000 00"
+                                           class="field-input font-mono">
+                                    @error('iban') <p class="field-error">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label for="account_holder" class="field-label">Hesap sahibi</label>
+                                    <input id="account_holder" type="text" name="account_holder" maxlength="120" required
+                                           value="{{ old('account_holder', $iade->account_holder ?? auth()->user()->name) }}"
+                                           class="field-input">
+                                    @error('account_holder') <p class="field-error">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary">
+                                {{ $iade->status === 'awaiting_iban' ? 'Hesap bilgilerimi bildir' : 'Hesap bilgilerimi güncelle' }}
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         {{-- Ödemeler --}}
         <div class="surface mb-6 overflow-hidden">
             <div class="border-b border-line px-6 py-4">

@@ -318,6 +318,38 @@ class RoomAllocationTest extends TestCase
             ->assertDontSee($atanmamis->code);
     }
 
+    public function test_detay_ekrani_oda_tipinin_bloklarini_ve_alternatifini_soyler(): void
+    {
+        // Aynı yatak sayısında ikinci bir tip (zemin kat) — atama listesine karışmamalı
+        $zemin = RoomType::where('facility_id', $this->roomType->facility_id)
+            ->where('bed_count', $this->roomType->bed_count)
+            ->where('is_ground_floor', true)
+            ->firstOrFail();
+
+        $this->makeRoom('BEGONYA', '1');
+        $this->makeRoom('İDARE ÜSTÜ', '1');
+
+        Room::create([
+            'facility_id' => $this->roomType->facility_id,
+            'room_type_id' => $zemin->id,
+            'block' => 'LALE ZEMİN', 'number' => '1', 'is_active' => true,
+        ]);
+
+        $reservation = $this->makeReservation($this->on5);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.reservations.show', $reservation))
+            ->assertOk();
+
+        $this->assertSame(['BEGONYA', 'İDARE ÜSTÜ'], $response->viewData('roomTypeBlocks'));
+        $this->assertTrue($response->viewData('alternateTypes')->contains('id', $zemin->id));
+
+        // Zemin kat odası farklı tip olduğu için seçeneklerde çıkmaz
+        $this->assertFalse(
+            $response->viewData('availableRooms')->flatten()->contains('block', 'LALE ZEMİN')
+        );
+    }
+
     private function makeRoom(string $block, string $number): Room
     {
         return Room::create([

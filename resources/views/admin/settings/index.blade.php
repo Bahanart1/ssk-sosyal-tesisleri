@@ -119,6 +119,11 @@
                         <input type="number" min="0" max="120" name="cancellation_min_days" value="{{ $terms['cancellation_min_days'] }}" required class="field-input">
                         <p class="field-hint">Devre başlangıcına kalması gereken süre.</p>
                     </div>
+                    <div>
+                        <label class="field-label">İptal kesintisi (₺)</label>
+                        <input type="number" min="0" step="0.01" name="refund_cancellation_fee" value="{{ $terms['refund_cancellation_fee'] }}" required class="field-input">
+                        <p class="field-hint">Üye iptalinde iadeden düşülen kırtasiye ve hizmet bedeli. Yer tahsis edilemeyen başvurularda kesinti yapılmaz.</p>
+                    </div>
                 </div>
             </div>
 

@@ -22,6 +22,7 @@ class ReservationService
     public function __construct(
         private readonly ReservationPricer $pricer,
         private readonly DocumentStorage $documents,
+        private readonly RefundService $refunds,
     ) {}
 
     /**
@@ -220,6 +221,9 @@ class ReservationService
             'decided_at' => now(),
             'approved_by' => $admin->id,
         ]);
+
+        // Yer tahsis edilemeyen başvurunun peşinatı kesintisiz iade edilir.
+        $this->refunds->open($reservation, 'rejected');
 
         return $reservation->fresh();
     }
