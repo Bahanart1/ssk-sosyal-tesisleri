@@ -64,6 +64,14 @@
             <p class="field-hint">Birleşik devre başvuruları her iki devrede de listelenir.</p>
         </div>
         <div>
+            <label class="field-label">Oda</label>
+            <select name="room" class="field-input">
+                <option value="">Tümü</option>
+                <option value="unassigned" @selected(request('room') === 'unassigned')>Atanmadı</option>
+                <option value="assigned" @selected(request('room') === 'assigned')>Atandı</option>
+            </select>
+        </div>
+        <div>
             <label class="field-label">Peşinat</label>
             <select name="deposit" class="field-input">
                 <option value="">Tümü</option>
@@ -73,7 +81,7 @@
             </select>
         </div>
         <button type="submit" class="btn-primary">Filtrele</button>
-        @if (request()->hasAny(['q', 'facility', 'period', 'deposit']))
+        @if (request()->hasAny(['q', 'facility', 'period', 'room', 'deposit']))
             <a href="{{ route('admin.reservations.index', ['status' => request('status')]) }}" class="btn-ghost">Temizle</a>
         @endif
     </form>
@@ -91,6 +99,7 @@
                             <th>Üye</th>
                             <th>Tesis / Oda</th>
                             <th>Devre</th>
+                            <th>Oda</th>
                             <th>Kişi</th>
                             <th>Tutar</th>
                             <th>Peşinat</th>
@@ -113,6 +122,12 @@
                                 <td class="text-xs">
                                     {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->number }}. @endif
                                     <p class="text-ink-muted">{{ $reservation->start_date->format('d.m.Y') }}</p>
+                                </td>
+                                <td>
+                                    @include('admin.reservations._room-assign', [
+                                        'reservation' => $reservation,
+                                        'options' => $roomOptions[$reservation->id] ?? null,
+                                    ])
                                 </td>
                                 <td>{{ $reservation->guests_count }}</td>
                                 <td><x-money :value="$reservation->total_price" class="font-semibold" /></td>
@@ -140,6 +155,12 @@
                                 </p>
                             </div>
                             <x-status-badge :status="$reservation->status" />
+                        </div>
+                        <div class="mt-3">
+                            @include('admin.reservations._room-assign', [
+                                'reservation' => $reservation,
+                                'options' => $roomOptions[$reservation->id] ?? null,
+                            ])
                         </div>
                         <div class="mt-3 flex items-center justify-between">
                             <x-money :value="$reservation->total_price" class="font-semibold text-ink" />

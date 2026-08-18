@@ -150,7 +150,7 @@ class ReservationController extends Controller
         $this->authorizeOwner($reservation);
 
         $reservation->load([
-            'facility', 'roomType', 'period', 'secondPeriod',
+            'facility', 'roomType', 'room', 'period', 'secondPeriod',
             'guests.customerGroup', 'payments',
         ]);
 

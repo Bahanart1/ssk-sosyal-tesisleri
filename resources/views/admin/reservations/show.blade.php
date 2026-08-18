@@ -36,6 +36,50 @@
                     <div class="divide-y divide-line">
                         <div class="flex justify-between px-6 py-3 text-sm"><span class="text-ink-muted">Tesis</span><span class="font-medium text-ink">{{ $reservation->facility->name }}</span></div>
                         <div class="flex justify-between px-6 py-3 text-sm"><span class="text-ink-muted">Oda tipi</span><span class="font-medium text-ink">{{ $reservation->roomType->name }} ({{ $reservation->roomType->bed_count }} yatak)</span></div>
+                        <div class="px-6 py-3 text-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-ink-muted">Atanan oda</span>
+                                @if ($reservation->room)
+                                    <span class="font-medium text-ink">{{ $reservation->room->label() }}</span>
+                                @else
+                                    <span class="text-ink-subtle">Atanmadı</span>
+                                @endif
+                            </div>
+
+                            @if (in_array($reservation->status, ['pending', 'approved', 'paid'], true))
+                                @php $bosSayisi = $availableRooms->flatten()->count(); @endphp
+                                <form method="POST" action="{{ route('admin.reservations.assign-room', $reservation) }}"
+                                      class="mt-3 flex flex-wrap items-center gap-2">
+                                    @csrf
+                                    <select name="room_id" class="field-input !py-1.5 flex-1 text-xs">
+                                        <option value="">Atanmadı</option>
+                                        @if ($reservation->room)
+                                            <option value="{{ $reservation->room->id }}" selected>{{ $reservation->room->label() }}</option>
+                                        @endif
+                                        @foreach ($availableRooms as $blok => $odalar)
+                                            <optgroup label="{{ $blok }} — {{ $odalar->count() }} boş">
+                                                @foreach ($odalar as $oda)
+                                                    @continue($reservation->room && $oda->id === $reservation->room->id)
+                                                    <option value="{{ $oda->id }}">{{ $oda->label() }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn-primary !px-3 !py-1.5 text-xs">Kaydet</button>
+                                </form>
+                                @error('room_id') <p class="field-error">{{ $message }}</p> @enderror
+                                <p class="mt-1.5 text-[11px] text-ink-subtle">
+                                    @if ($bosSayisi > 0)
+                                        {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
+                                        için {{ $bosSayisi }} {{ $reservation->roomType->name }} seçilebilir.
+                                        <a href="{{ route('admin.rooms.index', ['tesis' => $reservation->facility->slug, 'devre' => $reservation->period_id]) }}"
+                                           class="hover:underline">Blok görünümü</a>
+                                    @else
+                                        Bu devrede boşta {{ $reservation->roomType->name }} kalmadı.
+                                    @endif
+                                </p>
+                            @endif
+                        </div>
                         <div class="flex justify-between gap-4 px-6 py-3 text-sm">
                             <span class="text-ink-muted">Devre</span>
                             <span class="text-right font-medium text-ink">

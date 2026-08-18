@@ -98,8 +98,20 @@
         {{-- Yer tahsis edilen başvurular --}}
         <div class="surface mb-6 overflow-hidden">
             <div class="border-b border-line px-5 py-4">
-                <h2 class="text-base font-semibold text-ink">Yer tahsis edilen üyeler ({{ $allocated->count() }})</h2>
-                <p class="text-xs text-ink-muted">Onaylanmış ve ödemesi tamamlanmış başvurular</p>
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-base font-semibold text-ink">Yer tahsis edilen üyeler ({{ $allocated->count() }})</h2>
+                        <p class="text-xs text-ink-muted">Onaylanmış ve ödemesi tamamlanmış başvurular</p>
+                    </div>
+                    <a href="{{ route('admin.rooms.index', ['tesis' => $period->facility->slug, 'devre' => $period->id]) }}"
+                       class="btn-secondary !px-3 !py-1.5 text-xs">Bu devrede boş odalar</a>
+                </div>
+                @php $odasiz = $allocated->whereNull('room_id')->count(); @endphp
+                @if ($odasiz > 0)
+                    <p class="mt-3 text-xs font-medium" style="color: var(--status-warn)">
+                        {{ $odasiz }} başvuruya henüz fiziksel oda atanmadı.
+                    </p>
+                @endif
             </div>
 
             @if ($allocated->isEmpty())
@@ -112,6 +124,7 @@
                                 <th>Üye</th>
                                 <th>Grup</th>
                                 <th>Oda tipi</th>
+                                <th>Oda</th>
                                 <th>Kişi</th>
                                 <th>Tutar</th>
                                 <th>Bakiye</th>
@@ -136,6 +149,14 @@
                                         {{ $reservation->roomType->name }}
                                         @if ($reservation->isTwoPeriods())
                                             <p class="text-ink-muted">Birleşik devre · {{ $reservation->nights }} gün</p>
+                                        @endif
+                                    </td>
+                                    <td class="text-xs">
+                                        @if ($reservation->room)
+                                            <span class="font-medium text-ink">{{ $reservation->room->label() }}</span>
+                                        @else
+                                            <a href="{{ route('admin.reservations.edit', $reservation) }}"
+                                               class="font-medium hover:underline" style="color: var(--status-warn)">Ata</a>
                                         @endif
                                     </td>
                                     <td class="tabular-nums">{{ $reservation->guests->count() }}</td>

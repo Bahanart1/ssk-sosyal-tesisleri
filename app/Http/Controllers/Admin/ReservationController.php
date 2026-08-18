@@ -8,6 +8,7 @@ use App\Models\Facility;
 use App\Models\Period;
 use App\Models\Reservation;
 use App\Models\ReservationGuest;
+use App\Models\Room;
 use App\Models\RoomType;
 use App\Services\ReservationService;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class ReservationController extends Controller
 
     public function index(Request $request)
     {
-        $query = Reservation::with(['user', 'facility', 'roomType', 'period', 'secondPeriod'])
+        $query = Reservation::with(['user', 'facility', 'roomType', 'room', 'period', 'secondPeriod'])
             ->withCount('guests');
 
         if ($status = $request->get('status')) {
@@ -38,6 +39,11 @@ class ReservationController extends Controller
 
         if ($deposit = $request->get('deposit')) {
             $query->where('deposit_status', $deposit);
+        }
+
+        // Oda atanmamış başvuruları bulmak için; "Ödendi" sekmesiyle birlikte kullanılır.
+        if ($room = $request->get('room')) {
+            $query->where(fn ($q) => $room === 'unassigned' ? $q->whereNull('room_id') : $q->whereNotNull('room_id'));
         }
 
         if ($search = $request->get('q')) {
@@ -57,8 +63,11 @@ class ReservationController extends Controller
         $periods = Period::with('facility')->ordered()->get();
         $multipleYears = $periods->pluck('year')->unique()->count() > 1;
 
+        $reservations = $query->latest()->paginate(15)->withQueryString();
+
         return view('admin.reservations.index', [
-            'reservations' => $query->latest()->paginate(15)->withQueryString(),
+            'reservations' => $reservations,
+            'roomOptions' => $this->roomOptionsFor($reservations->getCollection()),
             'facilities' => Facility::ordered()->get(),
             'periodsByFacility' => $periods->groupBy(fn (Period $p) => $p->facility->name),
             'periodLabel' => fn (Period $p) => $p->label()
@@ -74,11 +83,14 @@ class ReservationController extends Controller
     public function show(Reservation $reservation)
     {
         $reservation->load([
-            'user.customerGroup', 'facility', 'roomType', 'period', 'secondPeriod',
+            'user.customerGroup', 'facility', 'roomType', 'room', 'period', 'secondPeriod',
             'guests.customerGroup', 'payments.verifier', 'approver',
         ]);
 
-        return view('admin.reservations.show', compact('reservation'));
+        return view('admin.reservations.show', [
+            'reservation' => $reservation,
+            'availableRooms' => $this->availableRooms($reservation),
+        ]);
     }
 
     /**
@@ -87,7 +99,7 @@ class ReservationController extends Controller
      */
     public function edit(Reservation $reservation)
     {
-        $reservation->load(['user', 'facility', 'roomType', 'period', 'secondPeriod', 'guests.customerGroup']);
+        $reservation->load(['user', 'facility', 'roomType', 'room', 'period', 'secondPeriod', 'guests.customerGroup']);
 
         $preview = $this->safeQuote($reservation);
 
@@ -211,6 +223,44 @@ class ReservationController extends Controller
             ->with('success', 'Değişiklikler kaydedildi ve tutar yeniden hesaplandı.');
     }
 
+    /**
+     * Fiziksel oda ataması. Düzenleme formundan ayrıdır; ödemesi tamamlanmış
+     * başvuruya da oda verilebilmeli, oda değişikliği ücreti etkilemez.
+     */
+    public function assignRoom(Request $request, Reservation $reservation)
+    {
+        abort_unless(in_array($reservation->status, Room::OCCUPYING_STATUSES, true), 422);
+
+        $data = $request->validate([
+            'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
+        ], [], ['room_id' => 'oda']);
+
+        if (empty($data['room_id'])) {
+            $reservation->update(['room_id' => null]);
+
+            return back()->with('success', 'Oda ataması kaldırıldı.');
+        }
+
+        $periodIds = array_filter([$reservation->period_id, $reservation->second_period_id]);
+        $room = Room::find($data['room_id']);
+
+        $uygun = $room
+            && $room->facility_id === $reservation->facility_id
+            && $room->room_type_id === $reservation->room_type_id
+            && $room->is_active
+            && Room::whereKey($room->id)->freeForPeriods($periodIds, $reservation->id)->exists();
+
+        if (! $uygun) {
+            return back()->withErrors([
+                'room_id' => 'Seçilen oda bu devrede uygun değil. Oda bu arada başkasına verilmiş olabilir; sayfayı yenileyin.',
+            ]);
+        }
+
+        $reservation->update(['room_id' => $room->id]);
+
+        return back()->with('success', "{$room->label()} odası tahsis edildi.");
+    }
+
     public function approve(Request $request, Reservation $reservation)
     {
         abort_unless($reservation->status === 'pending', 422);
@@ -249,6 +299,87 @@ class ReservationController extends Controller
         ]);
 
         return back()->with('success', 'Başvuru iptal edildi.');
+    }
+
+    /**
+     * Listedeki her başvuru için atanabilir odalar. Satır başına sorgu atmamak
+     * adına tüm odalar ve dolu kayıtlar iki sorguda çekilip bellekte eşlenir.
+     *
+     * @param  \Illuminate\Support\Collection<int, Reservation>  $reservations
+     * @return array<int, \Illuminate\Support\Collection<string, \Illuminate\Support\Collection>>
+     */
+    private function roomOptionsFor($reservations): array
+    {
+        $atanabilir = $reservations->filter(fn (Reservation $r) => in_array($r->status, Room::OCCUPYING_STATUSES, true));
+
+        if ($atanabilir->isEmpty()) {
+            return [];
+        }
+
+        $rooms = Room::whereIn('facility_id', $atanabilir->pluck('facility_id')->unique())
+            ->whereIn('room_type_id', $atanabilir->pluck('room_type_id')->unique())
+            ->where('is_active', true)
+            ->ordered()
+            ->get();
+
+        $devreler = $atanabilir
+            ->flatMap(fn (Reservation $r) => array_filter([$r->period_id, $r->second_period_id]))
+            ->unique();
+
+        // Odayı hangi devrede kimin işgal ettiği: [devre => [oda kimlikleri]]
+        $dolu = [];
+
+        Reservation::whereNotNull('room_id')
+            ->whereIn('status', Room::OCCUPYING_STATUSES)
+            ->where(fn ($q) => $q->whereIn('period_id', $devreler)->orWhereIn('second_period_id', $devreler))
+            ->get(['id', 'room_id', 'period_id', 'second_period_id'])
+            ->each(function (Reservation $r) use (&$dolu) {
+                foreach (array_filter([$r->period_id, $r->second_period_id]) as $devre) {
+                    $dolu[$devre][$r->room_id] = $r->id;
+                }
+            });
+
+        $secenekler = [];
+
+        foreach ($atanabilir as $reservation) {
+            $secenekler[$reservation->id] = $rooms
+                ->where('facility_id', $reservation->facility_id)
+                ->where('room_type_id', $reservation->room_type_id)
+                ->reject(function (Room $room) use ($reservation, $dolu) {
+                    foreach (array_filter([$reservation->period_id, $reservation->second_period_id]) as $devre) {
+                        $sahibi = $dolu[$devre][$room->id] ?? null;
+
+                        if ($sahibi && $sahibi !== $reservation->id) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })
+                ->groupBy('block');
+        }
+
+        return $secenekler;
+    }
+
+    /**
+     * Bu başvuruya atanabilecek odalar: doğru tesis ve oda tipinde, aktif ve
+     * seçilen devre(ler)de başka bir başvuruya verilmemiş olanlar. Başvurunun
+     * hâlihazırda atanmış odası listede kalır.
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection>
+     */
+    private function availableRooms(Reservation $reservation)
+    {
+        $periodIds = array_filter([$reservation->period_id, $reservation->second_period_id]);
+
+        return Room::where('facility_id', $reservation->facility_id)
+            ->where('room_type_id', $reservation->room_type_id)
+            ->active()
+            ->freeForPeriods($periodIds, $reservation->id)
+            ->ordered()
+            ->get()
+            ->groupBy('block');
     }
 
     /** Düzenleme ekranındaki önizleme; eksik tarife gibi durumlarda ekranı kırmaz. */

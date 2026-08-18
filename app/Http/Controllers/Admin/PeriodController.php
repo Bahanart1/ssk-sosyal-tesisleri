@@ -97,7 +97,7 @@ class PeriodController extends Controller
 
         $reservations = Reservation::query()
             ->where(fn ($q) => $q->where('period_id', $period->id)->orWhere('second_period_id', $period->id))
-            ->with(['user.customerGroup', 'roomType', 'guests.customerGroup', 'period', 'secondPeriod'])
+            ->with(['user.customerGroup', 'roomType', 'room', 'guests.customerGroup', 'period', 'secondPeriod'])
             ->get()
             ->sortBy(fn ($r) => $r->user->name)
             ->values();

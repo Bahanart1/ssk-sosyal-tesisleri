@@ -10,7 +10,7 @@ class Reservation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code', 'user_id', 'facility_id', 'room_type_id',
+        'code', 'user_id', 'facility_id', 'room_type_id', 'room_id',
         'period_id', 'second_period_id', 'start_date', 'end_date', 'nights',
         'status', 'ground_floor_request', 'ground_floor_note', 'health_report_path',
         'application_date', 'surcharge_per_person_day',
@@ -53,6 +53,12 @@ class Reservation extends Model
     public function roomType()
     {
         return $this->belongsTo(RoomType::class);
+    }
+
+    /** Atanan fiziksel oda (blok + numara). */
+    public function room()
+    {
+        return $this->belongsTo(Room::class);
     }
 
     public function period()

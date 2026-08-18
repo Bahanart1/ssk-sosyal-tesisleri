@@ -97,6 +97,19 @@
                         @endforeach
                     </select>
                 </div>
+                @if ($periods->isNotEmpty())
+                    <div>
+                        <label class="field-label">Devre (doluluk)</label>
+                        <select name="devre" class="field-input !py-1.5 text-xs">
+                            <option value="">Seçilmedi</option>
+                            @foreach ($periods as $item)
+                                <option value="{{ $item->id }}" @selected($period?->is($item))>
+                                    {{ $item->label() }} — {{ $item->dateRange() }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div>
                     <label class="field-label">Durum</label>
                     <select name="durum" class="field-input !py-1.5 text-xs">
@@ -106,11 +119,42 @@
                     </select>
                 </div>
                 <button class="btn-primary !px-4 !py-1.5 text-xs">Filtrele</button>
-                @if (request()->hasAny(['blok', 'tip', 'durum']))
+                @if (request()->hasAny(['blok', 'tip', 'durum', 'devre']))
                     <a href="{{ route('admin.rooms.index', ['tesis' => $facility->slug]) }}" class="btn-ghost !px-3 !py-1.5 text-xs">Temizle</a>
                 @endif
                 <span class="ml-auto text-xs text-ink-muted">{{ $totalRooms }} oda listeleniyor</span>
             </form>
+
+            {{-- Devre bazlı doluluk özeti --}}
+            @if ($period)
+                @php
+                    $aktifOdalar = $blocks->flatten()->where('is_active', true);
+                    $doluSayisi = $aktifOdalar->filter(fn ($r) => $occupancy->has($r->id))->count();
+                    $bosSayisi = $aktifOdalar->count() - $doluSayisi;
+                    $oran = $aktifOdalar->count() ? round($doluSayisi / $aktifOdalar->count() * 100) : 0;
+                @endphp
+                <div class="surface mb-5 p-5">
+                    <div class="flex flex-wrap items-baseline justify-between gap-3">
+                        <div>
+                            <h2 class="font-display text-base font-semibold text-ink">
+                                {{ $period->label() }} doluluğu
+                            </h2>
+                            <p class="text-xs text-ink-muted">{{ $period->dateRange() }} · listelenen aktif odalar üzerinden</p>
+                        </div>
+                        <div class="flex items-center gap-5 text-sm">
+                            <span><strong class="tabular-nums text-ink">{{ $bosSayisi }}</strong> <span class="text-ink-muted">boş</span></span>
+                            <span><strong class="tabular-nums text-ink">{{ $doluSayisi }}</strong> <span class="text-ink-muted">dolu</span></span>
+                            <span class="tabular-nums text-ink-muted">%{{ $oran }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full" style="background: var(--c-surface-sunken)">
+                        <div class="h-full rounded-full" style="width: {{ $oran }}%; background: var(--chart-series)"></div>
+                    </div>
+                    <p class="mt-3 text-[11px] text-ink-subtle">
+                        Oda ataması başvurunun detay ekranından yapılır. Dolu odaya tıklayınca başvurusu açılır; birleşik devre başvuruları her iki devrede de odayı işgal eder.
+                    </p>
+                </div>
+            @endif
 
             {{-- Bloklar --}}
             <div class="space-y-4">
@@ -118,35 +162,62 @@
                     <div class="surface overflow-hidden">
                         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
                             <h2 class="font-display text-sm font-semibold text-ink">{{ $blockName }}</h2>
-                            <p class="text-[11px] text-ink-muted">
-                                {{ $rooms->count() }} oda ·
-                                {{ $rooms->groupBy(fn ($r) => $r->roomType->name)->map->count()
-                                    ->map(fn ($n, $name) => "{$n}× {$name}")->join(' · ') }}
-                            </p>
+                            @if ($period)
+                                @php
+                                    $blokAktif = $rooms->where('is_active', true);
+                                    $blokDolu = $blokAktif->filter(fn ($r) => $occupancy->has($r->id))->count();
+                                @endphp
+                                <p class="text-[11px] text-ink-muted">
+                                    <strong class="tabular-nums text-ink">{{ $blokAktif->count() - $blokDolu }}</strong> boş ·
+                                    <span class="tabular-nums">{{ $blokDolu }}</span> dolu ·
+                                    {{ $rooms->count() }} oda
+                                </p>
+                            @else
+                                <p class="text-[11px] text-ink-muted">
+                                    {{ $rooms->count() }} oda ·
+                                    {{ $rooms->groupBy(fn ($r) => $r->roomType->name)->map->count()
+                                        ->map(fn ($n, $name) => "{$n}× {$name}")->join(' · ') }}
+                                </p>
+                            @endif
                         </div>
                         <div class="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                             @foreach ($rooms as $room)
-                                <button type="button"
-                                        @click="editing = {{ Illuminate\Support\Js::from([
-                                            'id' => $room->id,
-                                            'label' => $room->label(),
-                                            'is_active' => $room->is_active,
-                                            'note' => $room->note,
-                                            'room_type_id' => $room->room_type_id,
-                                        ]) }}"
-                                        class="rounded-lg border px-3 py-2 text-left transition-colors
-                                               {{ $room->is_active
-                                                   ? 'border-line bg-surface-sunken hover:border-accent-400'
-                                                   : 'border-dashed border-line-soft bg-transparent opacity-60 hover:opacity-100' }}">
-                                    <p class="text-sm font-semibold tabular-nums text-ink">{{ $room->number }}</p>
-                                    <p class="truncate text-[10px] text-ink-muted">{{ $room->roomType->name }}</p>
-                                    @if (! $room->is_active)
-                                        <p class="mt-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Pasif</p>
-                                    @endif
-                                    @if ($room->note)
-                                        <p class="truncate text-[10px] text-ink-subtle" title="{{ $room->note }}">{{ $room->note }}</p>
-                                    @endif
-                                </button>
+                                @php $sahip = $period ? $occupancy->get($room->id) : null; @endphp
+
+                                @if ($sahip)
+                                    {{-- Devre seçiliyken dolu oda, doğrudan başvurusuna açılır --}}
+                                    <a href="{{ route('admin.reservations.show', $sahip) }}"
+                                       class="rounded-lg border border-accent-300 bg-accent-50 px-3 py-2 text-left transition-colors hover:border-accent-500 dark:border-accent-700 dark:bg-accent-900/20">
+                                        <p class="text-sm font-semibold tabular-nums text-ink">{{ $room->number }}</p>
+                                        <p class="truncate text-[10px] font-medium text-ink" title="{{ $sahip->user->name }}">{{ $sahip->user->name }}</p>
+                                        <p class="truncate font-mono text-[10px] text-ink-muted">{{ $sahip->code }}</p>
+                                    </a>
+                                @else
+                                    <button type="button"
+                                            @click="editing = {{ Illuminate\Support\Js::from([
+                                                'id' => $room->id,
+                                                'label' => $room->label(),
+                                                'is_active' => $room->is_active,
+                                                'note' => $room->note,
+                                                'room_type_id' => $room->room_type_id,
+                                            ]) }}"
+                                            class="rounded-lg border px-3 py-2 text-left transition-colors
+                                                   {{ $room->is_active
+                                                       ? 'border-line bg-surface-sunken hover:border-accent-400'
+                                                       : 'border-dashed border-line-soft bg-transparent opacity-60 hover:opacity-100' }}">
+                                        <p class="text-sm font-semibold tabular-nums text-ink">{{ $room->number }}</p>
+                                        <p class="truncate text-[10px] text-ink-muted">{{ $room->roomType->name }}</p>
+                                        @if ($period && $room->is_active)
+                                            <p class="mt-0.5 text-[10px] font-medium" style="color: var(--status-good)">Boş</p>
+                                        @endif
+                                        @if (! $room->is_active)
+                                            <p class="mt-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Pasif</p>
+                                        @endif
+                                        @if ($room->note)
+                                            <p class="truncate text-[10px] text-ink-subtle" title="{{ $room->note }}">{{ $room->note }}</p>
+                                        @endif
+                                    </button>
+                                @endif
                             @endforeach
                         </div>
                     </div>

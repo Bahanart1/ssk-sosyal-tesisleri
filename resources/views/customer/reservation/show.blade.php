@@ -56,6 +56,9 @@
             <div class="divide-y divide-line">
                 <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-ink-muted">Tesis</span><span class="font-medium text-ink">{{ $reservation->facility->name }}</span></div>
                 <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-ink-muted">Oda tipi</span><span class="font-medium text-ink">{{ $reservation->roomType->name }}</span></div>
+                @if ($reservation->room && in_array($reservation->status, ['approved', 'paid'], true))
+                    <div class="flex justify-between px-6 py-3.5 text-sm"><span class="text-ink-muted">Odanız</span><span class="font-medium text-ink">{{ $reservation->room->label() }}</span></div>
+                @endif
                 <div class="flex justify-between gap-4 px-6 py-3.5 text-sm">
                     <span class="text-ink-muted">Devre</span>
                     <span class="text-right font-medium text-ink">

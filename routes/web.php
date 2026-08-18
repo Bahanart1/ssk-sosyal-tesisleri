@@ -114,6 +114,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/basvurular/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show');
         Route::get('/basvurular/{reservation}/duzenle', [AdminReservationController::class, 'edit'])->name('reservations.edit');
         Route::put('/basvurular/{reservation}', [AdminReservationController::class, 'update'])->name('reservations.update');
+        Route::post('/basvurular/{reservation}/oda', [AdminReservationController::class, 'assignRoom'])->name('reservations.assign-room');
         Route::post('/basvurular/{reservation}/onayla', [AdminReservationController::class, 'approve'])->name('reservations.approve');
         Route::post('/basvurular/{reservation}/reddet', [AdminReservationController::class, 'reject'])->name('reservations.reject');
         Route::post('/basvurular/{reservation}/iptal', [AdminReservationController::class, 'cancel'])->name('reservations.cancel');

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Facility;
+use App\Models\Period;
+use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
@@ -29,6 +31,9 @@ class RoomController extends Controller
 
         $rooms = collect();
         $roomTypes = collect();
+        $periods = collect();
+        $period = null;
+        $occupancy = collect();
 
         if ($facility) {
             $query = Room::where('facility_id', $facility->id)->with('roomType');
@@ -57,6 +62,14 @@ class RoomController extends Controller
                 ])
                 ->ordered()
                 ->get();
+
+            // Doluluk devre bazındadır: aynı oda başka devrede boş olabilir.
+            $periods = Period::where('facility_id', $facility->id)->ordered()->get();
+            $period = $periods->firstWhere('id', (int) $request->get('devre'));
+
+            if ($period) {
+                $occupancy = $this->occupancyFor($period);
+            }
         }
 
         return view('admin.rooms.index', [
@@ -69,7 +82,26 @@ class RoomController extends Controller
                 ? Room::where('facility_id', $facility->id)->distinct()->orderBy('block')->pluck('block')
                 : collect(),
             'totalRooms' => $rooms->count(),
+            'periods' => $periods,
+            'period' => $period,
+            'occupancy' => $occupancy,
         ]);
+    }
+
+    /**
+     * Seçili devrede odaları işgal eden başvurular, oda kimliğine göre eşlenir.
+     * Birleşik devre başvuruları ikinci devrelerinde de yer kaplar.
+     *
+     * @return \Illuminate\Support\Collection<int, Reservation>
+     */
+    private function occupancyFor(Period $period)
+    {
+        return Reservation::with('user')
+            ->whereNotNull('room_id')
+            ->whereIn('status', Room::OCCUPYING_STATUSES)
+            ->where(fn ($q) => $q->where('period_id', $period->id)->orWhere('second_period_id', $period->id))
+            ->get()
+            ->keyBy('room_id');
     }
 
     public function update(Request $request, Room $room)
