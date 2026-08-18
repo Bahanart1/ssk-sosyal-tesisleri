@@ -208,6 +208,8 @@ class ReservationController extends Controller
                 'name' => $facility->name,
                 'location' => $facility->location,
                 'description' => $facility->description,
+                'cover' => $facility->coverUrl(),
+                'gallery' => $facility->galleryUrls(5),
                 'room_types' => $facility->roomTypes->map(fn ($rt) => [
                     'id' => $rt->id,
                     'name' => $rt->name,

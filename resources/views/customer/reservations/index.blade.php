@@ -1,10 +1,10 @@
-<x-layouts.customer title="Başvurularım">
+<x-layouts.customer title="Rezervasyonlarım">
 
     @php
         $tabs = [
             '' => 'Tümü',
-            'pending' => 'İnceleniyor',
-            'approved' => 'Yer tahsis edildi',
+            'pending' => 'Değerlendiriliyor',
+            'approved' => 'Yeriniz ayrıldı',
             'paid' => 'Ödendi',
             'rejected' => 'Reddedildi',
             'cancelled' => 'İptal',
@@ -13,15 +13,15 @@
 
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-            <p class="section-label">Müracaat</p>
-            <h1 class="page-title mt-1">Başvurularım</h1>
-            <p class="page-subtitle">Gönderdiğiniz tüm müracaatlar ve durumları.</p>
+            <p class="section-label">Tatil planınız</p>
+            <h1 class="page-title mt-1">Rezervasyonlarım</h1>
+            <p class="page-subtitle">Geçmiş ve güncel tüm rezervasyonlarınız.</p>
         </div>
 
         @if ($canApply)
             <a href="{{ route('customer.reservations.create') }}" class="btn-accent shrink-0">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                Yeni Başvuru
+                Rezervasyon yap
             </a>
         @endif
     </div>
@@ -46,10 +46,10 @@
             <div class="empty-state !py-16">
                 <svg class="h-10 w-10 text-ink-subtle" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
                 <p class="font-medium text-ink-muted">
-                    {{ request('status') ? 'Bu durumda başvurunuz yok.' : 'Henüz bir başvurunuz yok.' }}
+                    {{ request('status') ? 'Bu durumda rezervasyonunuz yok.' : 'Henüz bir rezervasyonunuz yok.' }}
                 </p>
                 @if ($canApply && ! request('status'))
-                    <a href="{{ route('customer.reservations.create') }}" class="btn-primary mt-2">İlk başvurunuzu oluşturun</a>
+                    <a href="{{ route('customer.reservations.create') }}" class="btn-primary mt-2">İlk rezervasyonunuzu yapın</a>
                 @endif
             </div>
         @else
@@ -58,7 +58,10 @@
                     <li>
                         <a href="{{ route('customer.reservations.show', $reservation) }}"
                            class="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-surface-alt sm:flex-row sm:items-center sm:justify-between">
-                            <div class="min-w-0">
+                            <div class="flex min-w-0 items-center gap-4">
+                                <img src="{{ $reservation->facility->coverUrl() }}" alt=""
+                                     class="h-16 w-24 shrink-0 rounded-xl object-cover" loading="lazy">
+                                <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-semibold text-ink">{{ $reservation->facility->name }}</p>
                                     <x-status-badge :status="$reservation->status" />
@@ -71,6 +74,7 @@
                                     {{ $reservation->start_date->translatedFormat('d F') }} – {{ $reservation->end_date->translatedFormat('d F Y') }}
                                     ({{ $reservation->nights }} gün)
                                 </p>
+                                </div>
                             </div>
 
                             <div class="flex shrink-0 items-center justify-between gap-4 sm:justify-end">

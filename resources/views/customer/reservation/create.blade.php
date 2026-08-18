@@ -83,17 +83,35 @@
                     <h2 class="font-display text-xl font-semibold text-ink">Tesis seçimi</h2>
                     <p class="mt-1 text-sm text-ink-muted">Konaklamak istediğiniz tesisi seçin.</p>
 
-                    <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                    <div class="mt-6 grid gap-4 sm:grid-cols-2">
                         <template x-for="f in facilities" :key="f.id">
-                            <button type="button" @click="selectFacility(f)" class="choice-tile"
-                                    :class="facilityId === f.id ? 'choice-tile-active' : 'choice-tile-idle'">
-                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken text-accent-700 dark:text-accent-300">
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                            <button type="button" @click="selectFacility(f)"
+                                    class="group overflow-hidden rounded-2xl text-left ring-1 transition"
+                                    :class="facilityId === f.id
+                                        ? 'ring-2 ring-accent-500 bg-accent-50 dark:bg-accent-900/25'
+                                        : 'ring-line bg-surface hover:ring-accent-300'">
+                                <span class="relative block overflow-hidden">
+                                    <img :src="f.cover" :alt="f.name" loading="lazy"
+                                         class="h-44 w-full object-cover transition duration-500 group-hover:scale-105">
+                                    <span class="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur"
+                                          x-text="f.periods.length + ' devre açık'"></span>
+                                    <span x-show="facilityId === f.id" x-cloak
+                                          class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-accent-600 text-white">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    </span>
                                 </span>
-                                <span class="mt-2 font-semibold text-ink" x-text="f.name"></span>
-                                <span class="text-xs font-medium text-accent-700 dark:text-accent-300" x-text="f.location"></span>
-                                <span class="mt-1 text-xs leading-relaxed text-ink-muted" x-text="f.description"></span>
-                                <span class="mt-2 text-[11px] text-ink-subtle" x-text="f.periods.length + ' devre başvuruya açık'"></span>
+
+                                <span class="block p-4">
+                                    <span class="block font-display text-lg font-semibold text-ink" x-text="f.name"></span>
+                                    <span class="block text-xs font-medium text-accent-700 dark:text-accent-300" x-text="f.location"></span>
+                                    <span class="mt-2 block text-xs leading-relaxed text-ink-muted" x-text="f.description"></span>
+
+                                    <span class="mt-3 grid grid-cols-4 gap-1.5">
+                                        <template x-for="(g, i) in f.gallery.slice(1)" :key="i">
+                                            <img :src="g" alt="" loading="lazy" class="h-12 w-full rounded-md object-cover">
+                                        </template>
+                                    </span>
+                                </span>
                             </button>
                         </template>
                     </div>

@@ -1,9 +1,13 @@
 <x-layouts.customer title="Aidatlarım">
 
-    <div class="mb-6">
-        <p class="section-label">Üyelik</p>
-        <h1 class="page-title mt-1">Aidatlarım</h1>
-        <p class="page-subtitle">Yıl bazında aidat tahakkuk ve ödeme geçmişiniz.</p>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="section-label">Üyelik</p>
+            <h1 class="page-title mt-1">Aidatlarım</h1>
+            <p class="page-subtitle">Aidatınız güncel olduğu sürece tesislerden yararlanabilirsiniz.</p>
+        </div>
+        <img src="{{ asset('images/tesisler/colakli-6.webp') }}" alt=""
+             class="hidden h-20 w-36 rounded-xl object-cover sm:block" loading="lazy">
     </div>
 
     @if (! $member->isMember())

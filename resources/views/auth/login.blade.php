@@ -1,8 +1,30 @@
-<x-layouts.guest title="Müşteri Girişi">
+<x-layouts.guest title="Üye Girişi"
+                 :photo="asset('images/tesisler/gure-hero.webp')"
+                 eyebrow="Çolaklı & Güre"
+                 heading="Bu yaz sizi bekleyen bir hafta var."
+                 lede="Devrenizi seçin, kişilerinizi bildirin, peşinatınızı ödeyin. Rezervasyonunuzun her adımını buradan takip edin.">
+
+    <x-slot:aside>
+        <dl class="mt-8 hidden gap-8 border-t border-white/15 pt-6 lg:flex">
+            <div>
+                <dt class="text-xs text-chrome-muted">Tesis</dt>
+                <dd class="mt-1 text-xl font-semibold text-chrome-ink">2</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-chrome-muted">Devre</dt>
+                <dd class="mt-1 text-xl font-semibold text-chrome-ink">6 gün</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-chrome-muted">Sezon</dt>
+                <dd class="mt-1 text-xl font-semibold text-chrome-ink">Mayıs–Ekim</dd>
+            </div>
+        </dl>
+    </x-slot:aside>
+
     <div class="mb-8">
-        <p class="section-label">Müşteri girişi</p>
+        <p class="section-label">Üye girişi</p>
         <h1 class="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">Hoş geldiniz</h1>
-        <p class="page-subtitle">Rezervasyon panelinize erişmek için TC kimlik numaranız ve şifrenizle giriş yapın.</p>
+        <p class="page-subtitle">TC kimlik numaranız ve şifrenizle giriş yapın.</p>
     </div>
 
     @if ($errors->any())

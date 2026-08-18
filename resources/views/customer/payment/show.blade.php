@@ -3,16 +3,22 @@
     <div x-data="{ method: 'card', installment: {{ (int) (config('payment.installments')[0] ?? 1) }} }" class="mx-auto max-w-2xl">
         <a href="{{ route('customer.reservations.show', $reservation) }}" class="back-link">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Başvuruya dön
+            Rezervasyona dön
         </a>
 
-        <div class="mt-4 mb-6">
-            <p class="section-label">Bakiye ödemesi</p>
-            <h1 class="page-title mt-1">{{ $reservation->code }}</h1>
-            <p class="page-subtitle">
-                {{ $reservation->facility->name }} · {{ $reservation->roomType->name }} ·
-                {{ $reservation->start_date->translatedFormat('d F') }} – {{ $reservation->end_date->translatedFormat('d F Y') }}
-            </p>
+        {{-- Neyin ödendiğini görselle hatırlatır --}}
+        <div class="relative mt-4 mb-6 overflow-hidden rounded-2xl">
+            <img src="{{ $reservation->facility->coverUrl() }}" alt="{{ $reservation->facility->name }}"
+                 class="h-40 w-full object-cover" loading="eager">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"></div>
+            <div class="absolute inset-x-0 bottom-0 p-5">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Bakiye ödemesi · {{ $reservation->code }}</p>
+                <h1 class="mt-1 font-display text-2xl font-semibold text-white">{{ $reservation->facility->name }}</h1>
+                <p class="mt-0.5 text-sm text-white/80">
+                    {{ $reservation->roomType->name }} ·
+                    {{ $reservation->start_date->translatedFormat('d F') }} – {{ $reservation->end_date->translatedFormat('d F Y') }}
+                </p>
+            </div>
         </div>
 
         <div class="surface mb-6 overflow-hidden">

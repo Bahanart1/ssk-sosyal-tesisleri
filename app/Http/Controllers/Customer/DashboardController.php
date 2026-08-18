@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Facility;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -40,6 +41,7 @@ class DashboardController extends Controller
             'outstandingDues' => $user->outstandingDues(),
             'duesDebtTotal' => $user->duesDebtTotal(),
             'canApply' => $user->canApply(),
+            'facilities' => Facility::active()->ordered()->withCount(['periods as open_periods_count' => fn ($q) => $q->open()->upcoming()])->get(),
         ]);
     }
 }

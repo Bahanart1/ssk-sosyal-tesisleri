@@ -1,14 +1,31 @@
 <x-layouts.customer :title="'Başvuru ' . $reservation->code">
 
-    <div x-data="{ cancelOpen: false }" class="mx-auto max-w-3xl">
+    <div x-data="{ cancelOpen: false }" class="mx-auto max-w-4xl">
         <a href="{{ route('customer.dashboard') }}" class="back-link">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
             Panelime dön
         </a>
 
-        <div class="mt-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+        {{-- Tesis görseli — rezervasyonu somutlaştırır --}}
+        <div class="relative mt-4 mb-6 overflow-hidden rounded-2xl">
+            <img src="{{ $reservation->facility->coverUrl() }}" alt="{{ $reservation->facility->name }}"
+                 class="h-48 w-full object-cover sm:h-56" loading="eager">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"></div>
+            <div class="absolute inset-x-0 bottom-0 p-5">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                    {{ $reservation->period->label() }}@if ($reservation->secondPeriod) + {{ $reservation->secondPeriod->label() }}@endif
+                </p>
+                <h1 class="mt-1 font-display text-2xl font-semibold text-white">{{ $reservation->facility->name }}</h1>
+                <p class="mt-0.5 text-sm text-white/80">
+                    {{ $reservation->start_date->translatedFormat('d F') }} – {{ $reservation->end_date->translatedFormat('d F Y') }}
+                    · {{ $reservation->nights }} gün
+                </p>
+            </div>
+        </div>
+
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <p class="section-label">Başvuru</p>
+                <p class="section-label">Rezervasyon</p>
                 <h1 class="page-title mt-1">{{ $reservation->code }}</h1>
                 <p class="page-subtitle">{{ $reservation->created_at->translatedFormat('d F Y H:i') }} tarihinde oluşturuldu</p>
             </div>

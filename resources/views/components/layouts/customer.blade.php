@@ -8,8 +8,8 @@
 
     @php
         $nav = [
-            ['route' => 'customer.dashboard', 'label' => 'Panelim', 'pattern' => 'customer.dashboard'],
-            ['route' => 'customer.reservations.index', 'label' => 'Başvurularım', 'pattern' => 'customer.reservations.*'],
+            ['route' => 'customer.dashboard', 'label' => 'Ana Sayfa', 'pattern' => 'customer.dashboard'],
+            ['route' => 'customer.reservations.index', 'label' => 'Rezervasyonlarım', 'pattern' => 'customer.reservations.*'],
             ['route' => 'customer.dues.index', 'label' => 'Aidatlarım', 'pattern' => 'customer.dues.*'],
             ['route' => 'customer.profile.edit', 'label' => 'Hesabım', 'pattern' => 'customer.profile.*'],
         ];
@@ -17,17 +17,11 @@
     @endphp
 
     <header class="sticky top-0 z-30 border-b border-line bg-surface">
-        <div class="mx-auto max-w-5xl px-4 sm:px-6">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
             {{-- Üst satır --}}
             <div class="flex items-center justify-between py-3">
-                <a href="{{ route('customer.dashboard') }}" class="flex items-center gap-2.5">
-                    <div class="brand-mark-sm">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.5 1.5 0 0 1 2.122 0l8.954 8.955M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" /></svg>
-                    </div>
-                    <div class="leading-tight">
-                        <p class="text-sm font-semibold tracking-tight text-ink">SSK Sosyal Tesisleri</p>
-                        <p class="hidden text-[11px] text-ink-muted sm:block">Üye paneli</p>
-                    </div>
+                <a href="{{ route('customer.dashboard') }}" class="flex items-center gap-3" aria-label="Ana sayfa">
+                    <x-brand-logo class="h-9 w-auto text-ink" />
                 </a>
 
                 <div class="flex items-center gap-2 sm:gap-3">
@@ -70,11 +64,11 @@
         </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {{ $slot }}
     </main>
 
-    <footer class="mx-auto max-w-5xl px-4 pb-10 sm:px-6">
+    <footer class="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
         <p class="border-t border-line pt-6 text-center text-xs leading-relaxed text-ink-subtle">
             Tesislerden yararlanma koşulları, Dernek Yönetim Kurulunca belirlenen
             <span class="font-medium text-ink-muted">Kamp Konaklama Usul ve Esasları</span>'na tabidir.

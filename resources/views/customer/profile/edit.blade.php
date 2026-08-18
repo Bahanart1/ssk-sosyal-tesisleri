@@ -1,9 +1,13 @@
 <x-layouts.customer title="Hesabım">
 
-    <div class="mb-6">
-        <p class="section-label">Üyelik</p>
-        <h1 class="page-title mt-1">Hesabım</h1>
-        <p class="page-subtitle">İletişim bilgilerinizi güncelleyin ve şifrenizi değiştirin.</p>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="section-label">Üyelik</p>
+            <h1 class="page-title mt-1">Hesabım</h1>
+            <p class="page-subtitle">İletişim bilgilerinizi güncelleyin ve şifrenizi değiştirin.</p>
+        </div>
+        <img src="{{ asset('images/tesisler/gure-003.webp') }}" alt=""
+             class="hidden h-20 w-36 rounded-xl object-cover sm:block" loading="lazy">
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">
