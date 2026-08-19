@@ -7,6 +7,7 @@ use App\Models\CustomerGroup;
 use App\Models\MembershipDue;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\SearchText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,9 +35,11 @@ class DuesController extends Controller
 
         if ($search = $request->get('q')) {
             $query->where(fn ($q) => $q
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('tc_no', 'like', "%{$search}%")
-                ->orWhere('membership_no', 'like', "%{$search}%"));
+                ->where(function ($u) use ($search) {
+                    foreach (SearchText::tokens($search) as $kelime) {
+                        $u->where('search_index', 'like', "%{$kelime}%");
+                    }
+                }));
         }
 
         if ($group = $request->get('group')) {
@@ -161,14 +164,24 @@ class DuesController extends Controller
             'paid_at' => ['nullable', 'date'],
         ], [], ['method' => 'ödeme yöntemi']);
 
+        // Oran sonradan değişse bile tahsilat anındaki faiz sabit kalsın.
+        $faiz = $due->interestAmount();
+
         $due->update([
             'status' => 'paid',
+            'late_fee' => $faiz,
             'method' => $data['method'],
             'paid_at' => $data['paid_at'] ?? now()->toDateString(),
             'recorded_by' => Auth::id(),
         ]);
 
-        return back()->with('success', "{$due->user->name} · {$due->year} aidatı tahsil edildi olarak işaretlendi.");
+        $mesaj = "{$due->user->name} · {$due->year} aidatı tahsil edildi olarak işaretlendi.";
+
+        if ($faiz > 0) {
+            $mesaj .= ' Gecikme faizi: ' . number_format($faiz, 2, ',', '.') . ' ₺.';
+        }
+
+        return back()->with('success', $mesaj);
     }
 
     public function destroy(MembershipDue $due)

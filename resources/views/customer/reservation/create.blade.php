@@ -282,6 +282,17 @@
                                                class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
                                         <p class="field-hint">JPG, PNG veya PDF · en fazla 5 MB. Belgeler yalnızca yetkili personelce görüntülenir.</p>
                                     </div>
+                                    <div class="sm:col-span-2">
+                                        <label class="field-label">Vukuatlı nüfus kayıt örneği <span class="text-red-500">*</span></label>
+                                        <input type="file" :name="'guests['+index+'][civil_registry]'" accept=".jpg,.jpeg,.png,.pdf"
+                                               @change="guest.nufus = $event.target.files.length > 0; temizle()"
+                                               class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
+                                        <p class="field-hint">
+                                            e-Devlet → <strong>Nüfus Kayıt Örneği Belgesi Sorgulama</strong> ekranından "vukuatlı"
+                                            seçerek alınır. JPG, PNG veya PDF · en fazla 5 MB.
+                                        </p>
+                                    </div>
+
                                     <template x-if="isInfant(guest)">
                                         <label class="sm:col-span-2 flex cursor-pointer items-center gap-2.5 rounded-lg bg-surface-alt px-3 py-2.5">
                                             <input type="checkbox" x-model="guest.wants_meal" @change="refreshQuote()" :name="'guests['+index+'][wants_meal]'" value="1"
@@ -377,6 +388,40 @@
                                     <span class="font-semibold">Toplam tutar</span>
                                     <span class="font-display text-2xl font-semibold" x-text="money(quote.total)"></span>
                                 </div>
+                            </div>
+
+                            {{--
+                                Boş yatak ücreti sürpriz olmasın: tutar çıktığında ne için
+                                alındığı açıkça yazılır ve üyenin onayı istenir.
+                            --}}
+                            <div x-show="quote.empty_bed_total > 0" x-cloak
+                                 class="alert-soft mt-4 border-amber-200 bg-amber-50 text-amber-900 ring-amber-200 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100 dark:ring-amber-800">
+                                <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold">
+                                        Boş yatak ücreti alınacak —
+                                        <span x-text="money(quote.empty_bed_total)"></span>
+                                    </p>
+                                    <p class="mt-1 text-sm leading-relaxed">
+                                        Seçtiğiniz oda <span x-text="capacity"></span> kişilik; siz
+                                        <span x-text="guests.length"></span> kişi konaklayacaksınız. Kullanılmayan
+                                        <span x-text="quote.empty_bed_count"></span> yatak için günlük
+                                        <span x-text="money(quote.empty_bed_fee_per_day)"></span> ücret alınır.
+                                        Daha küçük bir oda tipi seçerseniz bu ücret oluşmaz.
+                                    </p>
+
+                                    <label class="mt-3 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 px-3 py-2.5 dark:bg-black/20">
+                                        <input type="checkbox" name="empty_bed_accepted" value="1"
+                                               x-model="bosYatakOnayi"
+                                               class="mt-0.5 rounded border-amber-400 text-amber-600 focus:ring-amber-500">
+                                        <span class="text-sm font-medium">
+                                            Boş yatak ücretini ödeyeceğimi kabul ediyorum.
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 overflow-hidden rounded-xl border border-line">
                                 <div class="flex justify-between bg-accent-50 dark:bg-accent-900/30 px-4 py-3.5 text-sm">
                                     <span class="font-semibold text-accent-900 dark:text-accent-100">Şimdi ödenecek peşinat</span>
                                     <span class="font-display text-lg font-semibold text-accent-700 dark:text-accent-200" x-text="money(quote.deposit_amount)"></span>
@@ -418,7 +463,7 @@
                                             <div class="px-4 py-2.5">
                                                 <p class="text-sm font-medium text-ink">{{ $account['bank'] }}</p>
                                                 <p class="text-[11px] text-ink-muted">{{ $account['branch'] ?? '' }}</p>
-                                                <p class="mt-0.5 font-mono text-xs text-ink">{{ $account['iban'] }}</p>
+                                                <x-iban :value="$account['iban']" />
                                             </div>
                                         @endforeach
                                     </div>
@@ -462,7 +507,7 @@
                         <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m6 2.25a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                         <p class="text-xs leading-relaxed">
                             Başvurunuz Yönetim tarafından değerlendirilecektir. Yer tahsisi yapılması halinde oda tipi ve
-                            tutar güncellenebilir; bakiyeyi tahsis bildiriminden itibaren 15 gün içinde ödemeniz gerekir.
+                            tutar güncellenebilir. Kalan bakiyeyi kartla, havaleyle ya da tesise girişte ödeyebilirsiniz.
                         </p>
                     </div>
                 </div>
@@ -545,6 +590,7 @@
                 customer_group_id: defaultGroupId,
                 wants_meal: false,
                 belge: false,
+                nufus: false,
                 ...overrides,
             });
 
@@ -570,6 +616,7 @@
 
                 // Doldurulmayan alanlar; boşken hata kutusu gizlidir.
                 eksikler: [],
+                bosYatakOnayi: false,
                 popup: false,
                 yonlendirildi: false,
                 dekont: false,
@@ -643,6 +690,7 @@
                             if (!g.birth_date) eksik.push(kim + ': doğum tarihi seçilmedi.');
                             if (!g.customer_group_id) eksik.push(kim + ': müşteri grubu seçilmedi.');
                             if (!g.belge) eksik.push(kim + ': kimlik belgesi eklenmedi.');
+                            if (!g.nufus) eksik.push(kim + ': vukuatlı nüfus kayıt örneği eklenmedi.');
                         });
 
                         if (this.guests.length > this.capacity) {
@@ -657,6 +705,10 @@
                         } else if (!this.quote) {
                             eksik.push(this.quoteError || 'Ücret hesaplanamadı; seçimlerinizi gözden geçirin.');
                         }
+                        if (this.quote && this.quote.empty_bed_total > 0 && !this.bosYatakOnayi) {
+                            eksik.push('Boş yatak ücretini kabul ettiğinizi işaretleyin.');
+                        }
+
                         if (this.depositMethod === 'bank_transfer' && !this.dekont) {
                             eksik.push('Havale/EFT seçtiniz; banka dekontunu ekleyin.');
                         }

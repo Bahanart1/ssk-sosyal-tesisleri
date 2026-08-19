@@ -70,4 +70,9 @@
         Kurum yöneticisi misiniz?
         <a href="{{ route('admin.login') }}" class="font-semibold text-ink underline decoration-accent-400 underline-offset-4 hover:text-accent-700 dark:hover:text-accent-300">Admin girişi</a>
     </p>
+    <p class="mt-6 text-center text-[11px] leading-relaxed text-ink-subtle">
+        Giriş yaparak kişisel verilerinizin
+        <a href="{{ url('panel/kvkk') }}" class="underline">KVKK Aydınlatma Metni</a>
+        kapsamında işlenmesini kabul etmiş sayılırsınız.
+    </p>
 </x-layouts.guest>

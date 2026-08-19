@@ -64,7 +64,7 @@
                                 <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-semibold text-ink">{{ $reservation->facility->name }}</p>
-                                    <x-status-badge :status="$reservation->status" />
+                                    <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" />
                                 </div>
                                 <p class="mt-1 text-xs text-ink-muted">
                                     {{ $reservation->code }} · {{ $reservation->roomType->name }} ·
@@ -80,15 +80,29 @@
                             <div class="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
                                 <div class="text-right">
                                     <x-money :value="$reservation->total_price" class="block font-semibold text-ink" />
-                                    @if ($reservation->status === 'approved' && $reservation->balanceDue() > 0)
+                                    @if ($reservation->collectsOnSite() && $reservation->balanceDue() > 0)
+                                        <span class="text-[11px] font-medium text-teal-700 dark:text-teal-300">
+                                            <x-money :value="$reservation->balanceDue()" /> tesiste
+                                        </span>
+                                    @elseif ($reservation->status === 'approved' && $reservation->balanceDue() > 0)
                                         <span class="text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                                            <x-money :value="$reservation->balanceDue()" /> bakiye
-                                            @if ($reservation->balance_due_date)
-                                                · son {{ $reservation->balance_due_date->format('d.m.Y') }}
-                                            @endif
+                                            <x-money :value="$reservation->balanceDue()" /> bakiye ödenecek
                                         </span>
                                     @elseif ($reservation->status === 'paid')
-                                        <span class="text-[11px] text-emerald-700 dark:text-emerald-400">Ödeme tamamlandı</span>
+                                        <span class="block text-[11px] text-emerald-700 dark:text-emerald-400">Ödeme tamamlandı</span>
+                                    @endif
+
+                                    {{-- Bekleyen ya da yapılmış iade, tutarın altında görünür --}}
+                                    @if ($reservation->refund)
+                                        @if ($reservation->refund->isPaid())
+                                            <span class="block text-[11px] text-ink-muted">
+                                                <x-money :value="$reservation->refund->amount" /> iade edildi
+                                            </span>
+                                        @elseif ($reservation->refund->status !== 'cancelled')
+                                            <span class="block text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                                <x-money :value="$reservation->refund->amount" /> iade edilecek
+                                            </span>
+                                        @endif
                                     @endif
                                 </div>
                                 <svg class="h-4 w-4 shrink-0 text-ink-subtle" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>

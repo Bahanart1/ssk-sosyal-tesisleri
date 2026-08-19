@@ -127,6 +127,8 @@ class Camp2026Seeder extends Seeder
 
             $this->period($gure, $no, $start, $discounted, $this->pairGroup($no, 13), $roomTariff, null);
         }
+    
+        $this->linkCombinablePeriods();
     }
 
     /**
@@ -203,5 +205,29 @@ class Camp2026Seeder extends Seeder
                 'note' => $note,
             ]
         );
+    }
+
+    /**
+     * Birleşebilen devre eşleşmelerini kurar: aynı grup içindeki ardışık
+     * devreler birbirine bağlanır. Yönetici bunu sonradan Devre Ayarları'ndan
+     * değiştirebilir.
+     */
+    private function linkCombinablePeriods(): void
+    {
+        Period::query()->whereNotNull('combine_group')->get()
+            ->groupBy(fn (Period $p) => $p->facility_id . '-' . $p->year . '-' . $p->combine_group)
+            ->each(function ($grup) {
+                $sirali = $grup->sortBy('number')->values();
+
+                foreach ($sirali as $i => $period) {
+                    $sonraki = $sirali[$i + 1] ?? null;
+
+                    $period->forceFill([
+                        'combines_with_id' => ($sonraki && $sonraki->number === $period->number + 1)
+                            ? $sonraki->id
+                            : null,
+                    ])->save();
+                }
+            });
     }
 }

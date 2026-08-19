@@ -16,13 +16,13 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <x-status-badge :status="$reservation->status" class="!px-3 !py-1.5 !text-sm" />
-                @if (! in_array($reservation->status, ['paid', 'cancelled'], true))
+                <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" class="!px-3 !py-1.5 !text-sm" />
+                @unless ($reservation->status === 'cancelled')
                     <a href="{{ route('admin.reservations.edit', $reservation) }}" class="btn-primary">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                        Düzenle ve Onayla
+                        {{ $reservation->status === 'pending' ? 'Düzenle ve Onayla' : 'Düzenle' }}
                     </a>
-                @endif
+                @endunless
             </div>
         </div>
 
@@ -40,7 +40,9 @@
                             <div class="flex items-center justify-between">
                                 <span class="text-ink-muted">Atanan oda</span>
                                 @if ($reservation->room)
-                                    <span class="font-medium text-ink">{{ $reservation->room->label() }}</span>
+                                    <span class="font-medium text-ink">
+                                        {{ $reservation->room->label() }}@if ($reservation->secondRoom) + {{ $reservation->secondRoom->label() }}@endif
+                                    </span>
                                 @else
                                     <span class="text-ink-subtle">Atanmadı</span>
                                 @endif
@@ -65,8 +67,27 @@
                                             </optgroup>
                                         @endforeach
                                     </select>
+                                    <select name="second_room_id" class="field-input !py-1.5 flex-1 text-xs">
+                                        <option value="">İkinci oda yok</option>
+                                        @if ($reservation->secondRoom)
+                                            <option value="{{ $reservation->secondRoom->id }}" selected>{{ $reservation->secondRoom->label() }}</option>
+                                        @endif
+                                        @foreach ($availableRooms as $blok => $odalar)
+                                            <optgroup label="{{ $blok }}">
+                                                @foreach ($odalar as $oda)
+                                                    @continue($reservation->secondRoom && $oda->id === $reservation->secondRoom->id)
+                                                    <option value="{{ $oda->id }}">{{ $oda->label() }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
                                     <button type="submit" class="btn-primary !px-3 !py-1.5 text-xs">Kaydet</button>
                                 </form>
+                                @error('second_room_id') <p class="field-error">{{ $message }}</p> @enderror
+                                <p class="mt-1.5 text-[11px] text-ink-subtle">
+                                    Kalabalık aileler tek odaya sığmıyorsa ikinci oda tahsis edin; kişi sınırı
+                                    o zaman {{ $reservation->roomType->capacity() * 2 }} kişiye çıkar.
+                                </p>
                                 @error('room_id') <p class="field-error">{{ $message }}</p> @enderror
                                 <div class="mt-1.5 space-y-1 text-[11px] text-ink-subtle">
                                     <p>
@@ -127,8 +148,22 @@
 
                 {{-- Kişiler --}}
                 <div class="surface overflow-hidden">
-                    <div class="border-b border-line px-6 py-4">
-                        <h2 class="font-display text-lg font-semibold text-ink">Konaklayacak kişiler ({{ $reservation->guests->count() }})</h2>
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-4">
+                        <div>
+                            <h2 class="font-display text-lg font-semibold text-ink">Konaklayacak kişiler ({{ $reservation->guests->count() }})</h2>
+                            @unless ($reservation->status === 'cancelled')
+                                <p class="text-xs text-ink-muted">
+                                    Kişi ekleyip çıkardığınızda tutar yeniden hesaplanır; fark tahsil veya iade edilir.
+                                </p>
+                            @endunless
+                        </div>
+                        @unless ($reservation->status === 'cancelled')
+                            <a href="{{ route('admin.reservations.edit', $reservation) }}#kisiler"
+                               class="btn-secondary shrink-0 !px-3 !py-1.5 text-xs">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                Kişi ekle / çıkar
+                            </a>
+                        @endunless
                     </div>
                     <div class="overflow-x-auto">
                         <table class="data-table">
@@ -160,12 +195,21 @@
                                         </td>
                                         <td><x-money :value="$guest->line_total" zero="Ücretsiz" class="text-xs font-semibold" /></td>
                                         <td>
-                                            @if ($guest->id_document_path)
-                                                <a href="{{ route('documents.identity', $guest) }}" target="_blank" rel="noopener"
-                                                   class="btn-ghost !px-2.5 !py-1 text-xs">Görüntüle</a>
-                                            @else
-                                                <span class="badge-red !py-0.5 !text-[10px]">Eksik</span>
-                                            @endif
+                                            <div class="flex flex-col items-start gap-1">
+                                                @if ($guest->id_document_path)
+                                                    <a href="{{ route('documents.identity', $guest) }}" target="_blank" rel="noopener"
+                                                       class="btn-ghost !px-2.5 !py-1 text-xs">Kimlik</a>
+                                                @else
+                                                    <span class="badge-red !py-0.5 !text-[10px]">Kimlik eksik</span>
+                                                @endif
+
+                                                @if ($guest->civil_registry_path)
+                                                    <a href="{{ route('documents.civil-registry', $guest) }}" target="_blank" rel="noopener"
+                                                       class="btn-ghost !px-2.5 !py-1 text-xs">Nüfus kaydı</a>
+                                                @else
+                                                    <span class="badge-red !py-0.5 !text-[10px]">Nüfus kaydı eksik</span>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -200,7 +244,7 @@
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <x-money :value="$payment->amount" class="text-sm font-semibold text-ink" />
-                                            <x-status-badge :status="$payment->status" />
+                                            <x-status-badge :status="$payment->status" :label="$payment->statusLabel()" />
                                         </div>
                                     </div>
 
@@ -268,6 +312,52 @@
                 </div>
 
                 {{-- Tutar --}}
+                @php
+                    $tahsil = $reservation->paidTotal();
+                    $odenenIade = ($reservation->refund && $reservation->refund->isPaid() && $reservation->refund->reason === 'overpayment')
+                        ? (float) $reservation->refund->amount
+                        : 0.0;
+                    $fark = round((float) $reservation->total_price - $tahsil + $odenenIade, 2);
+                @endphp
+                @if (abs($fark) >= 0.01 && in_array($reservation->status, ['approved', 'paid'], true))
+                    <div class="alert-soft mb-4 {{ $fark > 0
+                        ? 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-200 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100 dark:ring-amber-800'
+                        : 'border-teal-200 bg-teal-50 text-teal-800 ring-teal-200 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200 dark:ring-teal-800' }}">
+                        <div>
+                            @php $iadeKaydi = $reservation->refund; @endphp
+                            <p class="font-semibold">
+                                @if ($fark > 0)
+                                    Üyeden tahsil edilecek — <x-money :value="$fark" />
+                                @else
+                                    Üyeye iade edilecek — <x-money :value="abs($fark)" />
+                                    @if ($iadeKaydi && ! $iadeKaydi->isPaid())
+                                        <span class="badge-amber ml-1 !text-[10px]">İade bekleniyor</span>
+                                    @endif
+                                @endif
+                            </p>
+                            <p class="mt-1 text-xs">
+                                Güncel tutar <x-money :value="$reservation->total_price" />,
+                                bugüne kadar tahsil edilen <x-money :value="$tahsil" />.
+                            </p>
+
+                            @if ($fark < 0)
+                                @if ($iadeKaydi && ! $iadeKaydi->isPaid())
+                                    {{-- İade taraflar arasında yapıldıktan sonra buradan kapatılır --}}
+                                    <form method="POST" action="{{ route('admin.refunds.pay', $iadeKaydi) }}" class="mt-3">
+                                        @csrf
+                                        <button type="submit" class="btn-primary !px-3 !py-1.5 text-xs">İade edildi</button>
+                                    </form>
+                                @elseif (! $iadeKaydi)
+                                    <p class="mt-1 text-xs">
+                                        İade kaydını oluşturmak için Düzenle ekranından <strong>Ödemeyi Üyeye Gönder</strong> deyin;
+                                        üye tutarı panelinde görür.
+                                    </p>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <div class="surface overflow-hidden">
                     <div class="border-b border-line px-5 py-3.5">
                         <h2 class="font-display text-base font-semibold text-ink">Tutar</h2>
@@ -287,9 +377,6 @@
                         <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Peşinat</span><x-money :value="$reservation->deposit_amount" class="font-medium text-ink" /></div>
                         <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Tahsil edilen</span><x-money :value="$reservation->paidTotal()" class="font-medium text-ink" /></div>
                         <div class="flex justify-between px-5 py-2.5"><span class="font-semibold text-ink-muted">Kalan bakiye</span><x-money :value="$reservation->balanceDue()" class="font-semibold text-ink" /></div>
-                        @if ($reservation->balance_due_date)
-                            <div class="flex justify-between px-5 py-2.5"><span class="text-ink-muted">Son ödeme</span><span class="font-medium text-ink">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span></div>
-                        @endif
                     </div>
                 </div>
 

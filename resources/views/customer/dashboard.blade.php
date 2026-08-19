@@ -108,9 +108,6 @@
                         </p>
                         <p class="mt-0.5 text-sm text-ink-muted">
                             Kalan <x-money :value="$reservation->balanceDue()" class="font-semibold text-ink" />
-                            @if ($reservation->balance_due_date)
-                                · son ödeme {{ $reservation->balance_due_date->translatedFormat('d F Y') }}
-                            @endif
                         </p>
                     </div>
                 </div>
@@ -194,7 +191,7 @@
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <p class="font-medium text-ink">{{ $reservation->facility->name }}</p>
-                                        <x-status-badge :status="$reservation->status" />
+                                        <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" />
                                     </div>
                                     <p class="mt-0.5 text-xs text-ink-muted">
                                         {{ $reservation->roomType->name }} ·

@@ -67,7 +67,7 @@ class Refund extends Model
     {
         return match ($this->status) {
             'awaiting_iban' => 'IBAN Bekleniyor',
-            'pending' => 'Ödeme Bekleniyor',
+            'pending' => 'İade Bekleniyor',
             'paid' => 'İade Edildi',
             'cancelled' => 'İptal Edildi',
             default => $this->status,
@@ -79,6 +79,7 @@ class Refund extends Model
         return match ($this->reason) {
             'rejected' => 'Yer tahsis edilemedi',
             'cancelled' => 'Üye iptal etti',
+            'overpayment' => 'Fazla ödeme · kişi değişikliği',
             default => $this->reason,
         };
     }

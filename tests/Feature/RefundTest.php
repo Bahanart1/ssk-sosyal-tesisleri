@@ -71,6 +71,54 @@ class RefundTest extends TestCase
         parent::tearDown();
     }
 
+    /** Karara bağlanan başvuru için üye iade talebi gönderir. */
+    private function talepEt(\App\Models\Reservation $reservation): void
+    {
+        $this->actingAs($this->member)
+            ->post(route('customer.refunds.request', $reservation))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_red_karari_iadeyi_kendiliginden_acar_iptal_acmaz(): void
+    {
+        // Red: peşinat iadesi otomatik açılır, yönetici Peşinatlar sayfasında görür
+        $reddedilen = $this->makeReservation(paid: 10000);
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.reject', $reddedilen), ['admin_note' => 'Kapasite doldu'])
+            ->assertSessionHasNoErrors();
+
+        $iade = Refund::where('reservation_id', $reddedilen->id)->firstOrFail();
+        $this->assertSame('rejected', $iade->reason);
+        $this->assertSame('awaiting_iban', $iade->status);
+
+        // İptal: kayıt üye talep gönderene kadar açılmaz
+        $iptal = $this->makeReservation(paid: 10000);
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.cancel', $iptal), ['admin_note' => 'Üye istedi'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, Refund::where('reservation_id', $iptal->id)->count());
+    }
+
+    public function test_reddedilen_pesinat_iadeler_sayfasinda_gorunur(): void
+    {
+        $reservation = $this->makeReservation(paid: 10000);
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.reject', $reservation), ['admin_note' => 'Kapasite doldu']);
+
+        // Peşinatlar sekmesinde IBAN bekleyenler arasında listelenir
+        $this->actingAs($this->admin)
+            ->get(route('admin.refunds.index', ['tur' => 'pesinat', 'status' => 'awaiting_iban']))
+            ->assertOk()
+            ->assertSee($reservation->code);
+
+        // Fazla ödemeler sekmesine karışmaz
+        $this->actingAs($this->admin)
+            ->get(route('admin.refunds.index', ['tur' => 'fazla', 'status' => 'awaiting_iban']))
+            ->assertOk()
+            ->assertDontSee($reservation->code);
+    }
+
     public function test_red_karari_kesintisiz_iade_kaydi_acar(): void
     {
         $reservation = $this->makeReservation(paid: 10000);
@@ -78,6 +126,9 @@ class RefundTest extends TestCase
         $this->actingAs($this->admin)
             ->post(route('admin.reservations.reject', $reservation), ['admin_note' => 'Kapasite doldu'])
             ->assertSessionHasNoErrors();
+
+        $this->talepEt($reservation);
+
 
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
@@ -90,13 +141,16 @@ class RefundTest extends TestCase
 
     public function test_uye_iptalinde_hizmet_bedeli_dusulur(): void
     {
-        Setting::put('refund.cancellation_fee', 750, 'odeme');
+        Setting::put('refund.deposit_fee', 750, 'odeme');
 
         $reservation = $this->makeReservation(paid: 10000);
 
         $this->actingAs($this->admin)
             ->post(route('admin.reservations.cancel', $reservation), ['admin_note' => 'Üye vazgeçti'])
             ->assertSessionHasNoErrors();
+
+        $this->talepEt($reservation);
+
 
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
@@ -107,12 +161,15 @@ class RefundTest extends TestCase
 
     public function test_kesinti_tahsil_edilenden_fazla_olamaz(): void
     {
-        Setting::put('refund.cancellation_fee', 5000, 'odeme');
+        Setting::put('refund.deposit_fee', 5000, 'odeme');
 
         $reservation = $this->makeReservation(paid: 1200);
 
         $this->actingAs($this->admin)
             ->post(route('admin.reservations.cancel', $reservation), ['admin_note' => 'İptal']);
+
+        $this->talepEt($reservation);
+
 
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
@@ -251,12 +308,14 @@ class RefundTest extends TestCase
         $this->assertSame('paid', $refund->fresh()->status);
     }
 
-    public function test_ikinci_kez_karara_baglamak_iadeyi_cogaltmaz(): void
+    public function test_ikinci_talep_iadeyi_cogaltmaz(): void
     {
         $reservation = $this->makeReservation(paid: 10000);
 
         $this->actingAs($this->admin)->post(route('admin.reservations.reject', $reservation), ['admin_note' => 'Kapasite']);
-        $this->actingAs($this->admin)->post(route('admin.reservations.cancel', $reservation), ['admin_note' => 'İptal']);
+
+        $this->talepEt($reservation);
+        $this->talepEt($reservation);
 
         $this->assertSame(1, Refund::where('reservation_id', $reservation->id)->count());
         $this->assertSame('rejected', Refund::where('reservation_id', $reservation->id)->value('reason'));
@@ -295,6 +354,8 @@ class RefundTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post(route('admin.reservations.reject', $reservation), ['admin_note' => 'Kapasite doldu']);
+
+        $this->talepEt($reservation);
 
         auth()->logout();
 

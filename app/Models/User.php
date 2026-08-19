@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SearchText;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'membership_no', 'tc_no', 'phone', 'birth_date', 'password',
+        'name', 'email', 'membership_no', 'tc_no', 'phone', 'birth_date', 'password', 'must_change_password', 'password_changed_at',
         'role', 'customer_group_id', 'joined_at', 'address', 'city', 'institution', 'is_active',
     ];
 
@@ -28,12 +29,31 @@ class User extends Authenticatable
             'joined_at' => 'date',
             'birth_date' => 'date',
             'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
+            'password_changed_at' => 'datetime',
         ];
     }
 
     public function customerGroup()
     {
         return $this->belongsTo(CustomerGroup::class);
+    }
+
+    /** Ad, TC ve üyelik numarası aranabilir metne katlanır. */
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            $user->search_index = SearchText::index(
+                (string) $user->name,
+                (string) $user->tc_no,
+                (string) $user->membership_no,
+            );
+        });
+    }
+
+    public function petitions()
+    {
+        return $this->hasMany(Petition::class);
     }
 
     public function reservations()
@@ -90,9 +110,16 @@ class User extends Authenticatable
         return $this->dues()->unpaid()->due($year)->orderBy('year')->get();
     }
 
+    /** Anapara + gecikme faizi dahil toplam aidat borcu. */
     public function duesDebtTotal(?int $year = null): float
     {
-        return (float) $this->outstandingDues($year)->sum('amount');
+        return round((float) $this->outstandingDues($year)->sum(fn ($d) => $d->totalDue()), 2);
+    }
+
+    /** Borcun yalnızca gecikme faizi kısmı. */
+    public function duesInterestTotal(?int $year = null): float
+    {
+        return round((float) $this->outstandingDues($year)->sum(fn ($d) => $d->interestAmount()), 2);
     }
 
     /** Aidatın ödendiği son yıl — özet gösterimlerde kullanılır. */

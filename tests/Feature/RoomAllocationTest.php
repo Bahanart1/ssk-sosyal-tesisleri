@@ -350,6 +350,72 @@ class RoomAllocationTest extends TestCase
         );
     }
 
+    public function test_yonetici_ikinci_oda_tahsis_edebilir(): void
+    {
+        $a = $this->makeRoom('D', '1');
+        $b = $this->makeRoom('D', '2');
+        $reservation = $this->makeReservation($this->on5);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $reservation), [
+                'room_id' => $a->id,
+                'second_room_id' => $b->id,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $reservation->refresh();
+
+        $this->assertSame($a->id, $reservation->room_id);
+        $this->assertSame($b->id, $reservation->second_room_id);
+        $this->assertSame($this->roomType->capacity() * 2, $reservation->allocatedCapacity());
+    }
+
+    public function test_ikinci_oda_da_dolu_sayilir(): void
+    {
+        $a = $this->makeRoom('D', '3');
+        $b = $this->makeRoom('D', '4');
+
+        $this->makeReservation($this->on5)->update([
+            'status' => 'approved', 'room_id' => $a->id, 'second_room_id' => $b->id,
+        ]);
+
+        $this->assertFalse(Room::whereKey($b->id)->freeForPeriods([$this->on5->id])->exists(),
+            'İkinci oda da işgal edilmiş sayılmalı');
+        $this->assertTrue(Room::whereKey($b->id)->freeForPeriods([$this->on6->id])->exists());
+    }
+
+    public function test_ayni_oda_iki_kez_verilemez(): void
+    {
+        $a = $this->makeRoom('D', '5');
+        $reservation = $this->makeReservation($this->on5);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $reservation), [
+                'room_id' => $a->id,
+                'second_room_id' => $a->id,
+            ])
+            ->assertSessionHasErrors('second_room_id');
+    }
+
+    public function test_ikinci_oda_baskasina_verilmisse_reddedilir(): void
+    {
+        $a = $this->makeRoom('D', '6');
+        $dolu = $this->makeRoom('D', '7');
+
+        $this->makeReservation($this->on5)->update(['status' => 'approved', 'room_id' => $dolu->id]);
+
+        $yeni = $this->makeReservation($this->on5);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $yeni), [
+                'room_id' => $a->id,
+                'second_room_id' => $dolu->id,
+            ])
+            ->assertSessionHasErrors('second_room_id');
+
+        $this->assertNull($yeni->fresh()->room_id, 'Hatalı istek hiçbir şey kaydetmemeli');
+    }
+
     private function makeRoom(string $block, string $number): Room
     {
         return Room::create([

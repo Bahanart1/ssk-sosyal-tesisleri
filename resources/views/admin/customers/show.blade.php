@@ -35,10 +35,16 @@
                 </div>
             </div>
 
-            <button @click="editOpen = true" class="btn-primary shrink-0">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                Bilgileri Düzenle
-            </button>
+            <div class="flex shrink-0 flex-wrap gap-2">
+                <a href="{{ route('admin.reservations.create', ['uye' => $customer->id]) }}" class="btn-accent">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Adına Rezervasyon
+                </a>
+                <button @click="editOpen = true" class="btn-primary">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                    Bilgileri Düzenle
+                </button>
+            </div>
         </div>
 
         {{-- Aidat borcu uyarısı --}}
@@ -149,6 +155,14 @@
                                                         <input type="hidden" name="method" value="bank_transfer">
                                                         <button class="btn-accent !px-2.5 !py-1 text-xs">Tahsil edildi</button>
                                                     </form>
+                                                @elseif (@$due->status === 'review')
+                                                    <a href="{{ route('documents.dues-receipt', $due) }}" target="_blank" rel="noopener"
+                                                       class="btn-secondary !px-2.5 !py-1 text-xs">Dekont</a>
+                                                    <form method="POST" action="{{ route('admin.dues.paid', $due) }}">
+                                                        @csrf
+                                                        <input type="hidden" name="method" value="bank_transfer">
+                                                        <button class="btn-accent !px-2.5 !py-1 text-xs">Onayla</button>
+                                                    </form>
                                                 @endif
                                                 <button type="button" class="btn-ghost !px-2.5 !py-1 text-xs"
                                                         @click="editingDue = {{ Illuminate\Support\Js::from([
@@ -198,7 +212,7 @@
                                 </div>
                                 <div class="flex shrink-0 items-center gap-3">
                                     <x-money :value="$reservation->total_price" class="text-sm font-semibold tabular-nums text-ink" />
-                                    <x-status-badge :status="$reservation->status" />
+                                    <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" />
                                 </div>
                             </a>
                         </li>
@@ -241,7 +255,7 @@
                                         @if ($payment->installment > 1)<span class="text-ink-subtle"> · {{ $payment->installment }} taksit</span>@endif
                                     </td>
                                     <td class="tabular-nums"><x-money :value="$payment->amount" class="font-semibold" /></td>
-                                    <td><x-status-badge :status="$payment->status" /></td>
+                                    <td><x-status-badge :status="$payment->status" :label="$payment->statusLabel()" /></td>
                                     <td class="text-right">
                                         @if ($payment->receipt_path)
                                             <a href="{{ route('documents.receipt', $payment) }}" target="_blank" rel="noopener"

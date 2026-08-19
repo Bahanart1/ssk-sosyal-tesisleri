@@ -168,7 +168,7 @@
                                             <span class="text-xs text-emerald-700 dark:text-emerald-400">Tamamlandı</span>
                                         @endif
                                     </td>
-                                    <td><x-status-badge :status="$reservation->status" /></td>
+                                    <td><x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" /></td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-ghost !px-2.5 !py-1 text-xs">Aç</a>
                                     </td>
@@ -316,7 +316,7 @@
                                 <tr>
                                     <td class="font-medium">{{ $reservation->user->name }}</td>
                                     <td class="text-xs">{{ $reservation->roomType->name }}</td>
-                                    <td><x-status-badge :status="$reservation->status" /></td>
+                                    <td><x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" /></td>
                                     <td class="max-w-md text-xs text-ink-muted">{{ $reservation->admin_note ?: '—' }}</td>
                                     <td class="text-right">
                                         <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-ghost !px-2.5 !py-1 text-xs">Aç</a>

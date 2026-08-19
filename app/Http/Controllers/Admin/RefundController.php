@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Refund;
 use App\Services\RefundService;
+use App\Support\SearchText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -29,15 +30,26 @@ class RefundController extends Controller
             ? $request->get('status')
             : 'pending';
 
+        // Peşinatlar: reddedilen/iptal edilen başvuruların iadeleri.
+        // Fazla ödemeler: kişi değişikliği sonrası oluşan farklar.
+        $tur = $request->get('tur') === 'fazla' ? 'fazla' : 'pesinat';
+
+        $turKosulu = fn ($q) => $tur === 'fazla'
+            ? $q->where('reason', 'overpayment')
+            : $q->whereIn('reason', ['rejected', 'cancelled']);
+
         $query = Refund::with(['user', 'reservation.facility', 'reservation.period', 'processor'])
-            ->where('status', $status);
+            ->where('status', $status)
+            ->where($turKosulu);
 
         if ($search = $request->get('q')) {
             $query->where(function ($q) use ($search) {
                 $q->whereHas('user', fn ($u) => $u
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('tc_no', 'like', "%{$search}%")
-                    ->orWhere('membership_no', 'like', "%{$search}%"))
+                    ->where(function ($u) use ($search) {
+                        foreach (SearchText::tokens($search) as $kelime) {
+                            $u->where('search_index', 'like', "%{$kelime}%");
+                        }
+                    }))
                     ->orWhereHas('reservation', fn ($r) => $r->where('code', 'like', "%{$search}%"));
             });
         }
@@ -46,17 +58,24 @@ class RefundController extends Controller
             'refunds' => $query->latest()->paginate(20)->withQueryString(),
             'statuses' => self::STATUSES,
             'status' => $status,
+            'tur' => $tur,
             'counts' => Refund::selectRaw('status, count(*) as adet, sum(amount) as tutar')
+                ->where($turKosulu)
                 ->groupBy('status')
                 ->get()
                 ->keyBy('status'),
+            'turCounts' => [
+                'pesinat' => Refund::whereIn('reason', ['rejected', 'cancelled'])->open()->count(),
+                'fazla' => Refund::where('reason', 'overpayment')->open()->count(),
+            ],
         ]);
     }
 
     public function pay(Request $request, Refund $refund)
     {
         abort_if($refund->isPaid(), 422);
-        abort_if($refund->iban === null, 422, 'Üye henüz hesap bilgisi bildirmedi.');
+        // Fazla ödeme iadesi taraflar arasında yapılır; IBAN bildirimi beklenmez.
+        abort_if($refund->iban === null && $refund->reason !== 'overpayment', 422, 'Üye henüz hesap bilgisi bildirmedi.');
 
         $data = $request->validate([
             'reference_no' => ['nullable', 'string', 'max:60'],

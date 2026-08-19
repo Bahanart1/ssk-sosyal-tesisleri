@@ -96,12 +96,20 @@ class RoomController extends Controller
      */
     private function occupancyFor(Period $period)
     {
-        return Reservation::with('user')
-            ->whereNotNull('room_id')
+        $isgal = collect();
+
+        Reservation::with('user')
+            ->where(fn ($q) => $q->whereNotNull('room_id')->orWhereNotNull('second_room_id'))
             ->whereIn('status', Room::OCCUPYING_STATUSES)
             ->where(fn ($q) => $q->where('period_id', $period->id)->orWhere('second_period_id', $period->id))
             ->get()
-            ->keyBy('room_id');
+            ->each(function (Reservation $r) use ($isgal) {
+                foreach (array_filter([$r->room_id, $r->second_room_id]) as $odaId) {
+                    $isgal->put($odaId, $r);
+                }
+            });
+
+        return $isgal;
     }
 
     public function update(Request $request, Room $room)

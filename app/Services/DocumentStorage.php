@@ -19,6 +19,7 @@ class DocumentStorage
     public const IDENTITY = 'identity';
     public const RECEIPT = 'receipts';
     public const HEALTH_REPORT = 'health-reports';
+    public const CIVIL_REGISTRY = 'civil-registry';
 
     /** Yükleme doğrulama kuralları — form request'lerde yeniden kullanılır. */
     public const RULES = ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];

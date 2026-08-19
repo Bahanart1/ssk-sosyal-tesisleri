@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Period;
+use App\Models\CustomerGroup;
 use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\RoomType;
@@ -24,6 +25,17 @@ class ReservationService
         private readonly DocumentStorage $documents,
         private readonly RefundService $refunds,
     ) {}
+
+    /**
+     * Başvurudaki en yüksek müşteri grubu. Gruplar sort_order ile sıralıdır
+     * (1 = I. Grup en üsttür); listede gruba göre süzmek için kullanılır.
+     */
+    private function topCustomerGroupId(Reservation $reservation): ?int
+    {
+        return CustomerGroup::whereIn('id', $reservation->guests()->pluck('customer_group_id'))
+            ->orderBy('sort_order')
+            ->value('id');
+    }
 
     /**
      * Sihirbazdan gelen ham veriden fiyatlandırma girdisi kurar.
@@ -75,12 +87,21 @@ class ReservationService
      * @param  array<string, mixed>  $data
      * @param  array<int, UploadedFile>  $documents  Kişi indeksine göre kimlik belgeleri
      */
-    public function create(User $user, array $data, array $documents, ?UploadedFile $healthReport = null): Reservation
-    {
+    /**
+     * @param  array<int, UploadedFile>  $documents  Kişi sırasına göre kimlik belgeleri
+     * @param  array<int, UploadedFile>  $registries Kişi sırasına göre vukuatlı nüfus kayıtları
+     */
+    public function create(
+        User $user,
+        array $data,
+        array $documents,
+        ?UploadedFile $healthReport = null,
+        array $registries = [],
+    ): Reservation {
         $input = $this->buildPricingInput($data, applicationDate: now());
         $breakdown = $this->quote($input);
 
-        return DB::transaction(function () use ($user, $data, $documents, $healthReport, $input, $breakdown) {
+        return DB::transaction(function () use ($user, $data, $documents, $healthReport, $registries, $input, $breakdown) {
             $reservation = Reservation::create([
                 'code' => (string) Str::uuid(),
                 'user_id' => $user->id,
@@ -117,6 +138,9 @@ class ReservationService
                     'wants_meal' => (bool) ($guest['wants_meal'] ?? false),
                     'id_document_path' => isset($documents[$index])
                         ? $this->documents->store($documents[$index], DocumentStorage::IDENTITY, $user->id)
+                        : null,
+                    'civil_registry_path' => isset($registries[$index])
+                        ? $this->documents->store($registries[$index], DocumentStorage::CIVIL_REGISTRY, $user->id)
                         : null,
                     'sort_order' => $index,
                 ]);
@@ -164,6 +188,7 @@ class ReservationService
     public function applyBreakdown(Reservation $reservation, PriceBreakdown $breakdown): void
     {
         $reservation->update([
+            'top_customer_group_id' => $this->topCustomerGroupId($reservation),
             'nights' => $breakdown->nights,
             'surcharge_per_person_day' => $breakdown->surchargePerPersonDay,
             'empty_bed_count' => $breakdown->emptyBedCount,
@@ -207,7 +232,6 @@ class ReservationService
             'admin_note' => $note ?: $reservation->admin_note,
             'decided_at' => now(),
             'approved_by' => $admin->id,
-            'balance_due_date' => $this->pricer->balanceDueDate(now(), $reservation->start_date),
         ]);
 
         return $reservation->fresh();
@@ -222,7 +246,9 @@ class ReservationService
             'approved_by' => $admin->id,
         ]);
 
-        // Yer tahsis edilemeyen başvurunun peşinatı kesintisiz iade edilir.
+        // Reddedilen başvurunun peşinat iadesi kendiliğinden açılır: yönetici
+        // İadeler → Peşinatlar sayfasında görür, üye IBAN'ını bildirir.
+        // Üye iptalinde ise kayıt üye talep gönderince açılır.
         $this->refunds->open($reservation, 'rejected');
 
         return $reservation->fresh();

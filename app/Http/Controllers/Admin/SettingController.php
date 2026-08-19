@@ -27,11 +27,11 @@ class SettingController extends Controller
                 'ground_floor' => Setting::number('ground_floor.discount_rate', 0.10),
             ],
             'terms' => [
-                'balance_due_days' => (int) Setting::number('balance.due_days', 15),
                 'cancellation_min_days' => (int) Setting::number('cancellation.min_days_before', 10),
                 'refund_cancellation_fee' => (float) Setting::number('refund.cancellation_fee', 0),
             ],
             'duesAmount' => Setting::number('dues.annual_amount', 0),
+            'duesLateFeePercent' => Setting::number('dues.late_fee_monthly_percent', 0),
             'bankAccounts' => Setting::get('bank_accounts', []),
         ]);
     }
@@ -54,11 +54,11 @@ class SettingController extends Controller
             'child_discount_rate' => ['required', 'numeric', 'min:0', 'max:1'],
             'ground_floor_rate' => ['required', 'numeric', 'min:0', 'max:1'],
 
-            'balance_due_days' => ['required', 'integer', 'min:1', 'max:120'],
             'cancellation_min_days' => ['required', 'integer', 'min:0', 'max:120'],
             'refund_cancellation_fee' => ['required', 'numeric', 'min:0'],
 
             'dues_annual_amount' => ['required', 'numeric', 'min:0'],
+            'dues_late_fee_percent' => ['required', 'numeric', 'min:0', 'max:100'],
 
             'bank_accounts' => ['nullable', 'array'],
             'bank_accounts.*.bank' => ['required_with:bank_accounts.*.iban', 'nullable', 'string', 'max:120'],
@@ -70,7 +70,6 @@ class SettingController extends Controller
             'child_meal_rate' => '0-5 yaş yemek oranı',
             'child_discount_rate' => '6-11 yaş oranı',
             'ground_floor_rate' => 'zemin kat indirimi',
-            'balance_due_days' => 'bakiye ödeme süresi',
         ]);
 
         Setting::put('deposit.one_period', (float) $data['deposit_one_period'], 'pesinat');
@@ -89,10 +88,10 @@ class SettingController extends Controller
         Setting::put('child.discount_rate', (float) $data['child_discount_rate'], 'ucretlendirme');
         Setting::put('ground_floor.discount_rate', (float) $data['ground_floor_rate'], 'ucretlendirme');
 
-        Setting::put('balance.due_days', (int) $data['balance_due_days'], 'odeme');
         Setting::put('cancellation.min_days_before', (int) $data['cancellation_min_days'], 'odeme');
         Setting::put('refund.cancellation_fee', (float) $data['refund_cancellation_fee'], 'odeme');
         Setting::put('dues.annual_amount', (float) $data['dues_annual_amount'], 'aidat');
+        Setting::put('dues.late_fee_monthly_percent', (float) $data['dues_late_fee_percent'], 'aidat');
 
         Setting::put('bank_accounts', array_values(array_filter(
             $data['bank_accounts'] ?? [],

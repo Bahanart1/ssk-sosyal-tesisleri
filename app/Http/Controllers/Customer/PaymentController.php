@@ -74,6 +74,38 @@ class PaymentController extends Controller
             ->with('success', 'Dekontunuz alındı. Yönetim tarafından doğrulandıktan sonra ödemeniz tamamlanmış sayılacaktır.');
     }
 
+    /** Bakiyeyi tesiste ödemeyi beyan eder; tahsilat girişte yapılır. */
+    public function onSite(Reservation $reservation)
+    {
+        $this->authorizePayable($reservation);
+
+        $balance = $reservation->balanceDue();
+
+        if ($balance <= 0) {
+            return back()->with('error', 'Bu rezervasyon için ödenecek bakiye bulunmuyor.');
+        }
+
+        $mevcut = $reservation->payments()
+            ->where('method', 'on_site')
+            ->where('status', 'pending')
+            ->first();
+
+        // Çift tıklama ya da yarım kalmış kayıt: yeni kayıt açmadan tutarı
+        // güncelleyip rezervasyonu kesinleştirmek yeterli.
+        if ($mevcut) {
+            $mevcut->update(['amount' => $balance]);
+        } else {
+            $this->payments->recordOnSite($reservation, 'balance', $balance);
+        }
+
+        // Başvuru burada sonlanır: üyeden beklenen işlem kalmaz, kayıt
+        // kesinleşmiş rezervasyona döner ve oda ataması sırasına girer.
+        $reservation->update(['collect_on_site_at' => now()]);
+
+        return redirect()->route('customer.reservations.show', $reservation)
+            ->with('success', 'Rezervasyonunuz kesinleşti. Bakiyeyi tesise girişte ödeyeceksiniz.');
+    }
+
     private function authorizePayable(Reservation $reservation): void
     {
         abort_unless($reservation->user_id === Auth::id(), 403);

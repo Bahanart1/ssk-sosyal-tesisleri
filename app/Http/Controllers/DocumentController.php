@@ -57,6 +57,48 @@ class DocumentController extends Controller
         );
     }
 
+    public function civilRegistry(ReservationGuest $guest)
+    {
+        $guest->loadMissing('reservation');
+
+        $this->authorizeAccess($guest->reservation);
+
+        abort_unless($guest->civil_registry_path, 404);
+
+        return $this->documents->response(
+            $guest->civil_registry_path,
+            'nufus-kayit-' . $guest->reservation->code . '-' . $guest->id . '.' . pathinfo($guest->civil_registry_path, PATHINFO_EXTENSION)
+        );
+    }
+
+    /** Aidat dekontu: yalnızca sahibi ve yöneticiler açabilir. */
+    public function duesReceipt(\App\Models\MembershipDue $due)
+    {
+        $user = Auth::user();
+
+        abort_unless($user && ($user->isAdmin() || $due->user_id === $user->id), 403);
+        abort_unless($due->receipt_path, 404);
+
+        return $this->documents->response(
+            $due->receipt_path,
+            'aidat-dekont-' . $due->year . '-' . $due->id . '.' . pathinfo($due->receipt_path, PATHINFO_EXTENSION)
+        );
+    }
+
+    /** Dilekçe görseli: yalnızca sahibi ve yöneticiler açabilir. */
+    public function petition(\App\Models\Petition $petition)
+    {
+        $user = Auth::user();
+
+        abort_unless($user && ($user->isAdmin() || $petition->user_id === $user->id), 403);
+        abort_unless($petition->attachment_path, 404);
+
+        return $this->documents->response(
+            $petition->attachment_path,
+            'dilekce-' . $petition->id . '.' . pathinfo($petition->attachment_path, PATHINFO_EXTENSION)
+        );
+    }
+
     private function authorizeAccess(Reservation $reservation): void
     {
         $user = Auth::user();

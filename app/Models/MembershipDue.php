@@ -7,14 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class MembershipDue extends Model
 {
     protected $fillable = [
-        'user_id', 'year', 'amount', 'status', 'paid_at',
-        'method', 'receipt_no', 'note', 'recorded_by',
+        'user_id', 'year', 'amount', 'late_fee', 'status', 'paid_at',
+        'method', 'receipt_no', 'receipt_path', 'note', 'recorded_by',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
+            'late_fee' => 'decimal:2',
             'paid_at' => 'date',
         ];
     }
@@ -35,6 +36,47 @@ class MembershipDue extends Model
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    /**
+     * Gecikilen tam ay sayısı. Yılın aidatı o yılın sonuna kadar ödenir;
+     * faiz, izleyen yılın 1 Ocak'ından itibaren ay başına işler. İçinde
+     * bulunulan yılın aidatına faiz uygulanmaz.
+     */
+    public function lateMonths(): int
+    {
+        if ($this->isSettled() || $this->year >= now()->year) {
+            return 0;
+        }
+
+        $vade = now()->create($this->year + 1, 1, 1)->startOfDay();
+
+        return max(0, (int) $vade->diffInMonths(now()->startOfDay()));
+    }
+
+    /**
+     * Gecikme faizi. Ödenmişlerde tahsilat anında yazılan tutar okunur;
+     * borçlularda ayarlardaki aylık orana göre anlık hesaplanır (basit faiz).
+     */
+    public function interestAmount(): float
+    {
+        if ($this->isSettled()) {
+            return (float) $this->late_fee;
+        }
+
+        $aylikOran = (float) Setting::number('dues.late_fee_monthly_percent', 0);
+
+        if ($aylikOran <= 0) {
+            return 0.0;
+        }
+
+        return round((float) $this->amount * ($aylikOran / 100) * $this->lateMonths(), 2);
+    }
+
+    /** Anapara + gecikme faizi. */
+    public function totalDue(): float
+    {
+        return round((float) $this->amount + $this->interestAmount(), 2);
+    }
+
     /** Tahsil edilmiş sayılan durumlar: ödenmiş veya muaf tutulmuş. */
     public function isSettled(): bool
     {
@@ -46,6 +88,7 @@ class MembershipDue extends Model
         return match ($this->status) {
             'paid' => 'Ödendi',
             'waived' => 'Muaf',
+            'review' => 'Dekont İnceleniyor',
             default => 'Borçlu',
         };
     }
@@ -55,6 +98,7 @@ class MembershipDue extends Model
         return match ($this->status) {
             'paid' => 'green',
             'waived' => 'gray',
+            'review' => 'amber',
             default => 'red',
         };
     }
@@ -66,7 +110,7 @@ class MembershipDue extends Model
 
     public function scopeUnpaid($query)
     {
-        return $query->where('status', 'unpaid');
+        return $query->whereIn('status', ['unpaid', 'review']);
     }
 
     public function scopeSettled($query)

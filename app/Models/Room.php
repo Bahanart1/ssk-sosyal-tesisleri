@@ -35,6 +35,12 @@ class Room extends Model
         return $this->hasMany(Reservation::class);
     }
 
+    /** Bu odayı ikinci oda olarak kullanan başvurular. */
+    public function secondaryReservations()
+    {
+        return $this->hasMany(Reservation::class, 'second_room_id');
+    }
+
     /** Odayı fiilen işgal eden başvuru durumları. */
     public const OCCUPYING_STATUSES = ['pending', 'approved', 'paid'];
 
@@ -50,14 +56,19 @@ class Room extends Model
      */
     public function scopeFreeForPeriods($query, array $periodIds, ?int $exceptReservationId = null)
     {
-        return $query->whereDoesntHave('reservations', function ($q) use ($periodIds, $exceptReservationId) {
+        $isgal = function ($q) use ($periodIds, $exceptReservationId) {
             $q->whereIn('status', self::OCCUPYING_STATUSES)
                 ->where(fn ($w) => $w->whereIn('period_id', $periodIds)->orWhereIn('second_period_id', $periodIds));
 
             if ($exceptReservationId) {
                 $q->where('id', '!=', $exceptReservationId);
             }
-        });
+        };
+
+        // Oda hem birinci hem ikinci oda olarak verilmiş olabilir.
+        return $query
+            ->whereDoesntHave('reservations', $isgal)
+            ->whereDoesntHave('secondaryReservations', $isgal);
     }
 
     /** "MENEKŞE 12" */

@@ -1,6 +1,6 @@
 <x-layouts.customer title="Bakiye Ödemesi">
 
-    <div x-data="{ method: 'card', installment: {{ (int) (config('payment.installments')[0] ?? 1) }} }" class="mx-auto max-w-2xl">
+    <div x-data="{ method: 'card', installment: {{ (int) (config('payment.installments')[0] ?? 1) }} }" class="mx-auto max-w-4xl">
         <a href="{{ route('customer.reservations.show', $reservation) }}" class="back-link">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
             Rezervasyona dön
@@ -35,17 +35,11 @@
                     <span class="font-semibold">Ödenecek bakiye</span>
                     <x-money :value="$balance" class="font-display text-2xl font-semibold" />
                 </div>
-                @if ($reservation->balance_due_date)
-                    <div class="flex justify-between px-6 py-3 text-sm">
-                        <span class="text-ink-muted">Son ödeme tarihi</span>
-                        <span class="font-medium text-ink">{{ $reservation->balance_due_date->translatedFormat('d F Y') }}</span>
-                    </div>
-                @endif
             </div>
         </div>
 
         {{-- Yöntem seçimi --}}
-        <div class="mb-6 grid gap-3 sm:grid-cols-2">
+        <div class="mb-6 grid gap-3 sm:grid-cols-3">
             <button type="button" @click="method = 'card'" class="choice-tile"
                     :class="method === 'card' ? 'choice-tile-active' : 'choice-tile-idle'">
                 <span class="font-semibold text-ink">Kredi / Banka kartı</span>
@@ -56,6 +50,26 @@
                 <span class="font-semibold text-ink">Havale / EFT</span>
                 <span class="text-xs text-ink-muted">Dernek hesabına yatırıp dekontu yükleyin.</span>
             </button>
+            <button type="button" @click="method = 'on_site'" class="choice-tile"
+                    :class="method === 'on_site' ? 'choice-tile-active' : 'choice-tile-idle'">
+                <span class="font-semibold text-ink">Tesiste ödeyeceğim</span>
+                <span class="text-xs text-ink-muted">Bakiyeyi tesise girişte nakit veya kartla ödersiniz.</span>
+            </button>
+        </div>
+
+        {{-- Tesiste ödeme --}}
+        <div x-show="method === 'on_site'" x-cloak class="surface mb-6 p-6">
+            <h2 class="font-display text-lg font-semibold text-ink">Tesiste ödeme</h2>
+            <p class="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                Bakiyenizi tesise girişte ödeyeceğinizi bildirirsiniz. Kaydınız korunur; tahsilat
+                giriş sırasında resepsiyonda yapılır ve ödemeniz o anda işlenir.
+            </p>
+            <form method="POST" action="{{ route('customer.payment.on-site', $reservation) }}" class="mt-5">
+                @csrf
+                <button type="submit" class="btn-accent w-full">
+                    Bakiyeyi tesiste ödeyeceğim
+                </button>
+            </form>
         </div>
 
         {{-- Kart --}}
@@ -102,7 +116,7 @@
                         <div class="px-4 py-2.5">
                             <p class="text-sm font-medium text-ink">{{ $account['bank'] }}</p>
                             <p class="text-[11px] text-ink-muted">{{ $account['branch'] ?? '' }}</p>
-                            <p class="mt-0.5 font-mono text-xs text-ink">{{ $account['iban'] }}</p>
+                            <x-iban :value="$account['iban']" />
                         </div>
                     @endforeach
                 </div>

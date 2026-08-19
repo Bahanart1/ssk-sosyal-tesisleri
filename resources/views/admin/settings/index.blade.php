@@ -110,11 +110,6 @@
                 </div>
                 <div class="grid gap-5 p-6 sm:grid-cols-2">
                     <div>
-                        <label class="field-label">Bakiye ödeme süresi (gün)</label>
-                        <input type="number" min="1" max="120" name="balance_due_days" value="{{ $terms['balance_due_days'] }}" required class="field-input">
-                        <p class="field-hint">Yer tahsisi bildiriminden itibaren.</p>
-                    </div>
-                    <div>
                         <label class="field-label">İptal için asgari gün</label>
                         <input type="number" min="0" max="120" name="cancellation_min_days" value="{{ $terms['cancellation_min_days'] }}" required class="field-input">
                         <p class="field-hint">Devre başlangıcına kalması gereken süre.</p>
@@ -137,6 +132,14 @@
                     <div>
                         <label class="field-label">Yıllık aidat tutarı (₺)</label>
                         <input type="number" step="0.01" min="0" name="dues_annual_amount" value="{{ $duesAmount }}" required class="field-input">
+                    </div>
+                    <div>
+                        <label class="field-label">Gecikme faizi (aylık %)</label>
+                        <input type="number" step="0.01" min="0" max="100" name="dues_late_fee_percent" value="{{ $duesLateFeePercent }}" required class="field-input">
+                        <p class="field-hint">
+                            Ödenmeyen aidata, yılı bittikten sonra ay başına işler (basit faiz).
+                            0 yazarsanız faiz uygulanmaz; içinde bulunulan yılın aidatına faiz işlemez.
+                        </p>
                         <p class="field-hint">Aidatlar ekranından yıl bazında farklı bir tutarla da tahakkuk açabilirsiniz.</p>
                     </div>
                 </div>

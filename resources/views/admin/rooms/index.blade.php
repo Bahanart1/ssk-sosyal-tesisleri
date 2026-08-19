@@ -151,7 +151,10 @@
                         <div class="h-full rounded-full" style="width: {{ $oran }}%; background: var(--chart-series)"></div>
                     </div>
                     <p class="mt-3 text-[11px] text-ink-subtle">
-                        Oda ataması başvurunun detay ekranından yapılır. Dolu odaya tıklayınca başvurusu açılır; birleşik devre başvuruları her iki devrede de odayı işgal eder.
+                        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm border border-emerald-400 bg-emerald-100 dark:bg-emerald-900"></span> boş</span>
+                        <span class="ml-3 inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm border border-red-400 bg-red-100 dark:bg-red-900"></span> dolu</span>
+                        <span class="ml-3 inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm border border-dashed border-line-soft"></span> pasif</span>
+                        <span class="ml-3">· Dolu odaya tıklayınca başvurusu açılır.</span>
                     </p>
                 </div>
             @endif
@@ -187,8 +190,9 @@
                                 @if ($sahip)
                                     {{-- Devre seçiliyken dolu oda, doğrudan başvurusuna açılır --}}
                                     <a href="{{ route('admin.reservations.show', $sahip) }}"
-                                       class="rounded-lg border border-accent-300 bg-accent-50 px-3 py-2 text-left transition-colors hover:border-accent-500 dark:border-accent-700 dark:bg-accent-900/20">
+                                       class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-left transition-colors hover:border-red-500 dark:border-red-800 dark:bg-red-950/40">
                                         <p class="text-sm font-semibold tabular-nums text-ink">{{ $room->number }}</p>
+                                        <p class="text-[10px] font-semibold" style="color: var(--status-danger)">Dolu</p>
                                         <p class="truncate text-[10px] font-medium text-ink" title="{{ $sahip->user->name }}">{{ $sahip->user->name }}</p>
                                         <p class="truncate font-mono text-[10px] text-ink-muted">{{ $sahip->code }}</p>
                                     </a>
@@ -202,13 +206,13 @@
                                                 'room_type_id' => $room->room_type_id,
                                             ]) }}"
                                             class="rounded-lg border px-3 py-2 text-left transition-colors
-                                                   {{ $room->is_active
-                                                       ? 'border-line bg-surface-sunken hover:border-accent-400'
-                                                       : 'border-dashed border-line-soft bg-transparent opacity-60 hover:opacity-100' }}">
+                                                   @if (! $room->is_active) border-dashed border-line-soft bg-transparent opacity-60 hover:opacity-100
+                                                   @elseif ($period) border-emerald-300 bg-emerald-50 hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40
+                                                   @else border-line bg-surface-sunken hover:border-accent-400 @endif">
                                         <p class="text-sm font-semibold tabular-nums text-ink">{{ $room->number }}</p>
                                         <p class="truncate text-[10px] text-ink-muted">{{ $room->roomType->name }}</p>
                                         @if ($period && $room->is_active)
-                                            <p class="mt-0.5 text-[10px] font-medium" style="color: var(--status-good)">Boş</p>
+                                            <p class="mt-0.5 text-[10px] font-semibold" style="color: var(--status-good)">Boş</p>
                                         @endif
                                         @if (! $room->is_active)
                                             <p class="mt-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">Pasif</p>

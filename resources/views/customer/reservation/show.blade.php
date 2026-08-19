@@ -1,4 +1,4 @@
-<x-layouts.customer :title="'Başvuru ' . $reservation->code">
+<x-layouts.customer :title="'Rezervasyon ' . $reservation->code">
 
     <div x-data="{ cancelOpen: false }" class="mx-auto max-w-4xl">
         <a href="{{ route('customer.dashboard') }}" class="back-link">
@@ -29,14 +29,18 @@
                 <h1 class="page-title mt-1">{{ $reservation->code }}</h1>
                 <p class="page-subtitle">{{ $reservation->created_at->translatedFormat('d F Y H:i') }} tarihinde oluşturuldu</p>
             </div>
-            <x-status-badge :status="$reservation->status" class="!px-3 !py-1.5 !text-sm" />
+            <x-status-badge :status="$reservation->status"
+                            :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null"
+                            class="!px-3 !py-1.5 !text-sm" />
         </div>
 
         {{-- Durum açıklaması --}}
         @php
             $statusNote = match ($reservation->status) {
                 'pending' => 'Müracaatınız değerlendiriliyor. Müracaat edilmesi ve peşinat yatırılması yer tahsisi yapılacağı anlamına gelmez.',
-                'approved' => 'Yer tahsisi yapıldı. Bakiyeyi belirtilen tarihe kadar ödemeniz gerekmektedir.',
+                'approved' => $reservation->collectsOnSite()
+                    ? 'Rezervasyonunuz kesinleşti. Kalan bakiyeyi tesise girişte ödeyeceksiniz; başka bir işlem yapmanıza gerek yok.'
+                    : 'Yer tahsisi yapıldı. Kalan bakiyeyi kartla, havaleyle ya da tesise girişte ödeyebilirsiniz.',
                 'paid' => 'Ödemeniz tamamlandı. İyi tatiller dileriz.',
                 'rejected' => 'Müracaatınız değerlendirme sonucunda uygun bulunmadı.',
                 'cancelled' => 'Bu başvuru iptal edildi.',
@@ -49,15 +53,35 @@
             <p class="text-sm">{{ $statusNote }}</p>
         </div>
 
-        {{-- Bakiye ödeme çağrısı --}}
-        @if ($reservation->status === 'approved' && $reservation->balanceDue() > 0)
-            <div class="surface mb-6 overflow-hidden border-accent-300 dark:border-accent-700">
+        {{-- Tesiste ödenecek --}}
+        @if ($reservation->collectsOnSite() && $reservation->balanceDue() > 0)
+            <div class="surface mb-6 overflow-hidden border-teal-300 dark:border-teal-800">
                 <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
+                        <p class="text-sm text-ink-muted">Tesise girişte ödenecek</p>
+                        <x-money :value="$reservation->balanceDue()" class="font-display text-2xl font-semibold text-ink" />
+                        <p class="mt-1 text-xs text-ink-muted">
+                            {{ $reservation->collect_on_site_at->translatedFormat('d F Y') }} tarihinde kesinleştirdiniz.
+                            Nakit veya kartla ödeyebilirsiniz.
+                        </p>
+                    </div>
+                    <a href="{{ route('customer.payment.show', $reservation) }}" class="btn-secondary shrink-0">
+                        Şimdi ödemek istiyorum
+                    </a>
+                </div>
+            </div>
+
+        {{-- Bakiye ödeme çağrısı --}}
+        @elseif ($reservation->status === 'approved' && $reservation->balanceDue() > 0)
+            <div class="surface mb-6 overflow-hidden border-accent-300 dark:border-accent-700">
+                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
                         <p class="text-sm text-ink-muted">Ödenecek bakiye</p>
                         <x-money :value="$reservation->balanceDue()" class="font-display text-2xl font-semibold text-ink" />
-                        @if ($reservation->balance_due_date)
-                            <p class="mt-0.5 text-xs text-ink-muted">Son ödeme tarihi: {{ $reservation->balance_due_date->translatedFormat('d F Y') }}</p>
+                        @if ($reservation->admin_note)
+                            <p class="mt-2 max-w-lg rounded-lg bg-surface-alt px-3 py-2 text-xs leading-relaxed text-ink">
+                                <span class="font-semibold">Yönetim notu:</span> {{ $reservation->admin_note }}
+                            </p>
                         @endif
                     </div>
                     <a href="{{ route('customer.payment.show', $reservation) }}" class="btn-accent shrink-0">Ödemeye Geç</a>
@@ -113,7 +137,11 @@
                             <x-money :value="$guest->line_total" zero="Ücretsiz" class="text-sm font-semibold text-ink" />
                             @if ($guest->id_document_path)
                                 <a href="{{ route('documents.identity', $guest) }}" target="_blank" rel="noopener"
-                                   class="btn-ghost !px-2.5 !py-1.5 text-xs" title="Kimlik belgesini görüntüle">Belge</a>
+                                   class="btn-ghost !px-2.5 !py-1.5 text-xs" title="Kimlik belgesini görüntüle">Kimlik</a>
+                                @if ($guest->civil_registry_path)
+                                    <a href="{{ route('documents.civil-registry', $guest) }}" target="_blank" rel="noopener"
+                                       class="btn-ghost !px-2.5 !py-1.5 text-xs" title="Vukuatlı nüfus kaydını görüntüle">Nüfus kaydı</a>
+                                @endif
                             @endif
                         </div>
                     </li>
@@ -158,13 +186,34 @@
                     <x-money :value="$reservation->paidTotal()" class="font-medium text-ink" />
                 </div>
                 <div class="flex justify-between px-6 py-3 text-sm">
-                    <span class="font-semibold text-ink-muted">Kalan bakiye</span>
+                    <span class="font-semibold text-ink-muted">
+                        {{ $reservation->collectsOnSite() ? 'Tesiste ödenecek' : 'Kalan bakiye' }}
+                    </span>
                     <x-money :value="$reservation->balanceDue()" class="font-semibold text-ink" />
                 </div>
             </div>
         </div>
 
-        {{-- İade — yalnızca karara bağlanmış ve parası tahsil edilmiş başvurularda --}}
+        {{--
+            İade talebe bağlıdır: Dernek iadeleri belirli aralıklarla toplu ödediği için
+            kayıt kendiliğinden açılmaz, üye istediğinde talep gönderir.
+        --}}
+        @if (! $reservation->refund && in_array($reservation->status, ['rejected', 'cancelled'], true) && $reservation->paidTotal() > 0)
+            <div class="surface mb-6 p-6">
+                <h2 class="font-display text-lg font-semibold text-ink">Peşinat iadesi</h2>
+                <p class="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                    Bu rezervasyon için <x-money :value="$reservation->paidTotal()" class="font-semibold text-ink" />
+                    tahsil edilmişti. İadenizi almak istiyorsanız talep gönderin; iadeler Dernek tarafından
+                    belirli aralıklarla toplu olarak ödenir.
+                </p>
+                <form method="POST" action="{{ route('customer.refunds.request', $reservation) }}" class="mt-4">
+                    @csrf
+                    <button type="submit" class="btn-primary">İade talebi gönder</button>
+                </form>
+            </div>
+        @endif
+
+        {{-- İade — talep gönderilmiş başvurularda --}}
         @if ($reservation->refund)
             @php $iade = $reservation->refund; @endphp
 
@@ -172,7 +221,9 @@
                 <div class="border-b border-line px-6 py-4">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                            <h2 class="font-display text-lg font-semibold text-ink">Peşinat iadesi</h2>
+                            <h2 class="font-display text-lg font-semibold text-ink">
+                                {{ $iade->reason === 'overpayment' ? 'İade' : 'Peşinat iadesi' }}
+                            </h2>
                             <p class="text-xs text-ink-muted">{{ $iade->reasonLabel() }}</p>
                         </div>
                         <span class="badge-{{ $iade->isPaid() ? 'green' : ($iade->status === 'pending' ? 'accent' : 'amber') }}">
@@ -199,14 +250,30 @@
                 </div>
 
                 <div class="border-t border-line p-6">
-                    @if ($iade->isPaid())
+                    @if (! $iade->isPaid() && $iade->reason === 'overpayment')
+                        {{-- Fazla ödeme iadesi taraflar arasında yapılır; IBAN istenmez --}}
+                        <div class="alert-soft border-amber-200 bg-amber-50 text-amber-900 ring-amber-200 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100 dark:ring-amber-800">
+                            <div>
+                                <p class="font-semibold">
+                                    <x-money :value="$iade->amount" /> tutarı iade edilecektir.
+                                </p>
+                                <p class="mt-1 text-xs leading-relaxed">
+                                    Rezervasyonunuzdaki değişiklik sonrası oluşan fazla ödemedir.
+                                    İade Dernek tarafından yapılacaktır; tamamlandığında bu sayfada
+                                    "İade Edildi" olarak görünür.
+                                </p>
+                            </div>
+                        </div>
+                    @elseif ($iade->isPaid())
                         <div class="alert-soft border-teal-200 bg-teal-50 text-teal-800 ring-teal-200 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200 dark:ring-teal-800">
                             <div>
                                 <p class="font-semibold">İade {{ $iade->paid_at->translatedFormat('d F Y') }} tarihinde yapıldı.</p>
-                                <p class="mt-1 text-xs">
-                                    {{ $iade->ibanFormatted() }} · {{ $iade->account_holder }}
-                                    @if ($iade->reference_no) · Referans {{ $iade->reference_no }} @endif
-                                </p>
+                                @if ($iade->iban)
+                                    <p class="mt-1 text-xs">
+                                        {{ $iade->ibanFormatted() }} · {{ $iade->account_holder }}
+                                        @if ($iade->reference_no) · Referans {{ $iade->reference_no }} @endif
+                                    </p>
+                                @endif
                                 <p class="mt-1 text-xs">Hesabınıza geçmediyse Dernek ile iletişime geçin.</p>
                             </div>
                         </div>
@@ -277,7 +344,7 @@
                                     <a href="{{ route('documents.receipt', $payment) }}" target="_blank" rel="noopener" class="btn-ghost !px-2.5 !py-1.5 text-xs">Dekont</a>
                                 @endif
                                 <x-money :value="$payment->amount" class="text-sm font-semibold text-ink" />
-                                <x-status-badge :status="$payment->status" />
+                                <x-status-badge :status="$payment->status" :label="$payment->statusLabel()" />
                             </div>
                         </li>
                     @endforeach
@@ -295,17 +362,48 @@
 
         {{-- İptal --}}
         @if ($reservation->isCancellable())
-            <button type="button" @click="cancelOpen = true" class="btn-secondary w-full !text-red-600">Başvuruyu iptal et</button>
+            <button type="button" @click="cancelOpen = true" class="btn-secondary w-full !text-red-600">Rezervasyonu iptal et</button>
 
             <template x-teleport="body">
                 <div x-show="cancelOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
                     <div class="modal-scrim" @click="cancelOpen = false"></div>
                     <div class="modal-panel" x-transition>
-                        <h3 class="font-display text-lg font-semibold text-ink">Başvuruyu iptal et</h3>
-                        <p class="mt-1 text-sm text-ink-muted">
-                            Ödediğiniz tutarın iadesi, Yönetim Kurulunca belirlenen kırtasiye ve hizmet bedeli
-                            düşülerek yapılır.
-                        </p>
+                        <h3 class="font-display text-lg font-semibold text-ink">Rezervasyonu iptal et</h3>
+
+                        @php
+                            $odenenTutar = $reservation->paidTotal();
+                            $iptalKesintisi = min($odenenTutar, app(\App\Services\RefundService::class)
+                                ->deductionFor($reservation, 'cancelled'));
+                            $iptalIadesi = round($odenenTutar - $iptalKesintisi, 2);
+                        @endphp
+
+                        @if ($odenenTutar > 0)
+                            <div class="mt-3 overflow-hidden rounded-xl border border-line text-sm">
+                                <div class="flex justify-between px-4 py-2.5">
+                                    <span class="text-ink-muted">Ödediğiniz tutar</span>
+                                    <x-money :value="$odenenTutar" class="font-medium text-ink" />
+                                </div>
+                                <div class="flex justify-between border-t border-line px-4 py-2.5">
+                                    <span class="text-ink-muted">
+                                        Kesinti
+                                        @if ($reservation->isLateCancel())
+                                            <span class="block text-[11px]" style="color: var(--status-warn)">
+                                                Devre başlangıcına 10 günden az kaldığı için konaklama bedelinin üçte biri
+                                            </span>
+                                        @else
+                                            <span class="block text-[11px] text-ink-subtle">Kırtasiye ve hizmet bedeli</span>
+                                        @endif
+                                    </span>
+                                    <span class="font-medium text-ink">− <x-money :value="$iptalKesintisi" /></span>
+                                </div>
+                                <div class="flex justify-between border-t border-line bg-surface-alt px-4 py-2.5">
+                                    <span class="font-semibold text-ink">İade edilecek</span>
+                                    <x-money :value="$iptalIadesi" class="font-semibold text-ink" />
+                                </div>
+                            </div>
+                        @else
+                            <p class="mt-1 text-sm text-ink-muted">Bu rezervasyon için tahsil edilmiş bir tutar bulunmuyor.</p>
+                        @endif
                         <form method="POST" action="{{ route('customer.reservations.cancel', $reservation) }}" class="mt-4">
                             @csrf
                             <textarea name="reason" rows="3" class="field-input" placeholder="İptal gerekçeniz (opsiyonel)"></textarea>

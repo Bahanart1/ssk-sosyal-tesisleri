@@ -7,6 +7,7 @@ use App\Models\CustomerGroup;
 use App\Models\MembershipDue;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\SearchText;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -23,9 +24,12 @@ class CustomerController extends Controller
 
         if ($search = $request->get('q')) {
             $query->where(fn ($q) => $q
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('tc_no', 'like', "%{$search}%")
-                ->orWhere('membership_no', 'like', "%{$search}%"));
+                ->where(function ($u) use ($search) {
+                    // Her kelime ayrı aranır; sıra önemli değil.
+                    foreach (SearchText::tokens($search) as $kelime) {
+                        $u->where('search_index', 'like', "%{$kelime}%");
+                    }
+                }));
         }
 
         if ($group = $request->get('group')) {

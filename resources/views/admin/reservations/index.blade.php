@@ -48,13 +48,13 @@
 
     {{-- Filtreler --}}
     @php
-        $filtreVar = request()->hasAny(['q', 'facility', 'period', 'room', 'deposit']);
+        $filtreVar = request()->hasAny(['q', 'facility', 'period', 'group', 'room', 'deposit']);
     @endphp
 
     <form method="GET" class="surface mb-6 p-4">
         <input type="hidden" name="stage" value="{{ $stage }}">
 
-        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-5">
             <div class="sm:col-span-2 xl:col-span-1">
                 <label for="f-q" class="field-label">Ara</label>
                 <input id="f-q" type="text" name="q" value="{{ request('q') }}"
@@ -89,6 +89,16 @@
             </div>
 
             <div>
+                <label for="f-group" class="field-label">Müşteri grubu</label>
+                <select id="f-group" name="group" class="field-input">
+                    <option value="">Tüm gruplar</option>
+                    @foreach ($groups as $group)
+                        <option value="{{ $group->id }}" @selected(request('group') == $group->id)>{{ $group->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
                 <label for="f-deposit" class="field-label">Peşinat</label>
                 <select id="f-deposit" name="deposit" class="field-input">
                     <option value="">Tüm peşinat durumları</option>
@@ -106,6 +116,9 @@
 
                 @if (request('period'))
                     <span class="text-ink-subtle">· Birleşik devre başvuruları her iki devrede de listelenir.</span>
+                @endif
+                @if (request('group'))
+                    <span class="text-ink-subtle">· Başvuru, kişileri arasındaki en yüksek gruba göre sayılır.</span>
                 @endif
             </p>
 
@@ -129,6 +142,7 @@
                         <tr>
                             <th>Başvuru</th>
                             <th>Üye</th>
+                            <th>Grup</th>
                             <th>Tesis / Oda</th>
                             <th>Devre</th>
                             <th>Oda</th>
@@ -147,6 +161,7 @@
                                     <p class="font-medium">{{ $reservation->user->name }}</p>
                                     <p class="text-xs text-ink-muted">{{ $reservation->user->membership_no ?? $reservation->user->maskedTcNo() }}</p>
                                 </td>
+                                <td class="text-xs">{{ $reservation->topCustomerGroup?->name ?? '—' }}</td>
                                 <td>
                                     <p>{{ $reservation->facility->name }}</p>
                                     <p class="text-xs text-ink-muted">{{ $reservation->roomType->name }}</p>
@@ -164,7 +179,7 @@
                                 <td>{{ $reservation->guests_count }}</td>
                                 <td><x-money :value="$reservation->total_price" class="font-semibold" /></td>
                                 <td><x-status-badge :status="$reservation->deposit_status" /></td>
-                                <td><x-status-badge :status="$reservation->status" /></td>
+                                <td><x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" /></td>
                                 <td class="text-right">
                                     <a href="{{ route('admin.reservations.show', $reservation) }}" class="btn-ghost !px-3 !py-1.5 text-xs">Aç</a>
                                 </td>
@@ -186,7 +201,7 @@
                                     {{ $reservation->roomType->name }} · {{ $reservation->period->label() }}
                                 </p>
                             </div>
-                            <x-status-badge :status="$reservation->status" />
+                            <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" />
                         </div>
                         <div class="mt-3">
                             @include('admin.reservations._room-assign', [

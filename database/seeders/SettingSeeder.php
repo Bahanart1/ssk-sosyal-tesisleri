@@ -37,11 +37,13 @@ class SettingSeeder extends Seeder
 
             // --- Üyelik aidatı (Madde 5/10) ---
             ['dues.annual_amount', 200, 'aidat', 'Yıllık üyelik aidatı (varsayılan tahakkuk tutarı)'],
+            ['dues.late_fee_monthly_percent', 0, 'aidat', 'Ödenmeyen aidata aylık gecikme faizi (%)'],
 
             // --- Ödeme ve iptal ---
-            ['balance.due_days', 15, 'odeme', 'Yer tahsisi bildiriminden sonra bakiye ödeme süresi (gün)'],
             ['cancellation.min_days_before', 10, 'odeme', 'İptal için devre başlangıcına kalması gereken asgari gün'],
-            ['refund.cancellation_fee', 0, 'odeme', 'Üye iptalinde iadeden düşülen kırtasiye ve hizmet bedeli (₺)'],
+            ['refund.deposit_fee', 500, 'odeme', 'İade halinde peşinattan kesilen kırtasiye ve hizmet bedeli (₺)'],
+            ['refund.late_cancel_ratio', 0.3333, 'odeme', 'Son günlerde sebepsiz iptalde alınan konaklama oranı (2 gün ≈ 1/3)'],
+            ['refund.early_departure_ratio', 0.5, 'odeme', 'Erken ayrılışta kalınmayan günler için alınan oran'],
 
             // --- Talep toplama penceresi (bilgilendirme amaçlı; başvuru yıl boyu açıktır) ---
             ['application.window', ['start' => '2026-02-01', 'end' => '2026-03-31'], 'genel', 'Talep toplama dönemi'],

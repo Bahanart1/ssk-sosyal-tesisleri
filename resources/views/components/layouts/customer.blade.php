@@ -11,6 +11,7 @@
             ['route' => 'customer.dashboard', 'label' => 'Ana Sayfa', 'pattern' => 'customer.dashboard'],
             ['route' => 'customer.reservations.index', 'label' => 'Rezervasyonlarım', 'pattern' => 'customer.reservations.*'],
             ['route' => 'customer.dues.index', 'label' => 'Aidatlarım', 'pattern' => 'customer.dues.*'],
+            ['route' => 'customer.petitions.index', 'label' => 'Dilekçelerim', 'pattern' => 'customer.petitions.*'],
             ['route' => 'customer.profile.edit', 'label' => 'Hesabım', 'pattern' => 'customer.profile.*'],
         ];
         $member = auth()->user();
@@ -72,6 +73,7 @@
         <p class="border-t border-line pt-6 text-center text-xs leading-relaxed text-ink-subtle">
             Tesislerden yararlanma koşulları, Dernek Yönetim Kurulunca belirlenen
             <span class="font-medium text-ink-muted">Kamp Konaklama Usul ve Esasları</span>'na tabidir.
+            · <a href="{{ route('customer.kvkk') }}" class="font-medium text-ink-muted underline hover:text-ink">KVKK Aydınlatma Metni</a>
         </p>
     </footer>
 </body>

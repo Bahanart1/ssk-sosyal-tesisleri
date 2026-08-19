@@ -151,7 +151,15 @@
                                                     <input type="hidden" name="method" value="bank_transfer">
                                                     <button class="btn-accent !px-2.5 !py-1 text-xs">Tahsil edildi</button>
                                                 </form>
-                                            @endif
+                                            @elseif (@$due->status === 'review')
+                                                    <a href="{{ route('documents.dues-receipt', $due) }}" target="_blank" rel="noopener"
+                                                       class="btn-secondary !px-2.5 !py-1 text-xs">Dekont</a>
+                                                    <form method="POST" action="{{ route('admin.dues.paid', $due) }}">
+                                                        @csrf
+                                                        <input type="hidden" name="method" value="bank_transfer">
+                                                        <button class="btn-accent !px-2.5 !py-1 text-xs">Onayla</button>
+                                                    </form>
+                                                @endif
                                             @if ($due)
                                                 <button type="button" class="btn-ghost !px-2.5 !py-1 text-xs"
                                                         @click="editing = {{ Illuminate\Support\Js::from([

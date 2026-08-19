@@ -1,4 +1,4 @@
-@props(['status'])
+@props(['status', 'label' => null])
 
 @php
     $map = [
@@ -14,7 +14,10 @@
         'refunded' => ['badge-gray', 'İade Edildi'],
         'success' => ['badge-green', 'Onaylandı'],
     ];
-    [$class, $label] = $map[$status] ?? ['badge-gray', $status];
+    [$class, $varsayilan] = $map[$status] ?? ['badge-gray', $status];
+
+    // Çağıran taraf daha doğru bir etiket verebilir (ör. tesiste tahsil edilecek ödeme).
+    $label ??= $varsayilan;
 @endphp
 
 <span {{ $attributes->merge(['class' => $class]) }}>

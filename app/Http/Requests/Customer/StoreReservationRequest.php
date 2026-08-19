@@ -31,6 +31,7 @@ class StoreReservationRequest extends FormRequest
             'guests.*.customer_group_id' => ['required', 'integer', 'exists:customer_groups,id'],
             'guests.*.wants_meal' => ['nullable', 'boolean'],
             'guests.*.document' => ['required', ...DocumentStorage::RULES],
+            'guests.*.civil_registry' => ['required', ...DocumentStorage::RULES],
 
             'ground_floor_request' => ['nullable', 'boolean'],
             'ground_floor_note' => ['nullable', 'required_if_accepted:ground_floor_request', 'string', 'max:500'],
@@ -56,6 +57,7 @@ class StoreReservationRequest extends FormRequest
             'guests.*.relation' => 'yakınlık',
             'guests.*.customer_group_id' => 'müşteri grubu',
             'guests.*.document' => 'kimlik belgesi',
+            'guests.*.civil_registry' => 'vukuatlı nüfus kayıt örneği',
             'ground_floor_note' => 'mazeret açıklaması',
             'health_report' => 'sağlık raporu',
             'deposit_method' => 'peşinat ödeme yöntemi',
@@ -67,6 +69,7 @@ class StoreReservationRequest extends FormRequest
     {
         return [
             'guests.*.document.required' => 'Her kişi için geçerli bir kimlik belgesi eklenmesi zorunludur.',
+            'guests.*.civil_registry.required' => 'Her kişi için vukuatlı nüfus kayıt örneği eklenmesi zorunludur.',
             'guests.*.tc_no.digits' => 'TC kimlik numarası 11 haneli olmalıdır.',
             'deposit_receipt.required_if' => 'Havale ile ödemede banka dekontunu eklemeniz gerekir.',
         ];

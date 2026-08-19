@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SearchText;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,9 +10,16 @@ class ReservationGuest extends Model
 {
     protected $fillable = [
         'reservation_id', 'full_name', 'tc_no', 'birth_date', 'relation',
-        'customer_group_id', 'age_category', 'wants_meal', 'id_document_path',
+        'customer_group_id', 'age_category', 'wants_meal', 'id_document_path', 'civil_registry_path',
         'unit_price', 'line_total', 'sort_order',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (ReservationGuest $guest) {
+            $guest->search_index = SearchText::index((string) $guest->full_name, (string) $guest->tc_no);
+        });
+    }
 
     protected function casts(): array
     {

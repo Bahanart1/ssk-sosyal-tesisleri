@@ -1,5 +1,7 @@
 <x-layouts.customer title="Aidatlarım">
 
+    <div x-data="{ odenecek: null }">
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <p class="section-label">Üyelik</p>
@@ -44,6 +46,11 @@
             <div class="stat-card">
                 <p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink-subtle">Toplam borç</p>
                 <p class="mt-2 text-2xl font-semibold text-ink">₺{{ number_format($debtTotal, 0, ',', '.') }}</p>
+                @if ($interestTotal > 0)
+                    <p class="mt-1 text-xs" style="color: var(--status-warn)">
+                        ₺{{ number_format($interestTotal, 2, ',', '.') }} gecikme faizi dahil
+                    </p>
+                @endif
                 <p class="mt-2 text-xs text-ink-muted">
                     {{ $outstanding->count() > 0 ? $outstanding->count() . ' yıl ödenmedi' : 'Ödenmemiş yıl yok' }}
                 </p>
@@ -91,10 +98,13 @@
                             <tr>
                                 <th>Yıl</th>
                                 <th>Tutar</th>
+                                <th>Gecikme faizi</th>
+                                <th>Toplam</th>
                                 <th>Durum</th>
                                 <th>Ödeme tarihi</th>
                                 <th>Yöntem</th>
                                 <th>Makbuz</th>
+                                <th>Ödeme</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-line">
@@ -102,10 +112,32 @@
                                 <tr>
                                     <td class="font-medium tabular-nums">{{ $due->year }}</td>
                                     <td class="tabular-nums"><x-money :value="$due->amount" /></td>
+                                    <td class="tabular-nums">
+                                        @if ($due->interestAmount() > 0)
+                                            <span style="color: var(--status-warn)"><x-money :value="$due->interestAmount()" /></span>
+                                            @unless ($due->isSettled())
+                                                <span class="block text-[10px] text-ink-subtle">{{ $due->lateMonths() }} ay</span>
+                                            @endunless
+                                        @else
+                                            <span class="text-ink-subtle">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="tabular-nums font-medium"><x-money :value="$due->totalDue()" /></td>
                                     <td><span class="badge-{{ $due->statusTone() }}">{{ $due->statusLabel() }}</span></td>
                                     <td class="text-xs text-ink-muted">{{ $due->paid_at?->translatedFormat('d F Y') ?? '—' }}</td>
                                     <td class="text-xs text-ink-muted">{{ $due->methodLabel() ?? '—' }}</td>
                                     <td class="text-xs text-ink-muted">{{ $due->receipt_no ?? '—' }}</td>
+                                    <td>
+                                        @if ($due->status === 'unpaid')
+                                            <button type="button" @click="odenecek = {{ Illuminate\Support\Js::from([
+                                                'id' => $due->id,
+                                                'yil' => $due->year,
+                                                'tutar' => number_format($due->totalDue(), 2, ',', '.'),
+                                            ]) }}" class="btn-accent !px-3 !py-1.5 text-xs">Öde</button>
+                                        @elseif ($due->status === 'review')
+                                            <span class="text-[11px] text-ink-muted">Dekont incelemede</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -128,7 +160,7 @@
                                 <p class="text-sm font-medium text-ink">{{ $account['bank'] }}</p>
                                 <p class="text-[11px] text-ink-muted">{{ $account['branch'] ?? '' }}</p>
                             </div>
-                            <p class="font-mono text-xs text-ink">{{ $account['iban'] }}</p>
+                            <x-iban :value="$account['iban']" />
                         </div>
                     @endforeach
                 </div>
@@ -140,4 +172,50 @@
             </div>
         @endif
     @endif
+        {{-- Havale ile aidat ödeme --}}
+        <template x-teleport="body">
+            <div x-show="odenecek" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4"
+                 @keydown.escape.window="odenecek = null">
+                <div class="modal-scrim" @click="odenecek = null"></div>
+                <div class="modal-panel" x-transition>
+                    <h3 class="font-display text-lg font-semibold text-ink">
+                        <span x-text="odenecek?.yil"></span> aidatını öde
+                    </h3>
+                    <p class="mt-1 text-sm text-ink-muted">
+                        Ödenecek tutar: <strong class="text-ink">₺<span x-text="odenecek?.tutar"></span></strong>
+                        <span class="block text-xs">Gecikme faizi varsa dahildir.</span>
+                    </p>
+
+                    @if (! empty($bankAccounts))
+                        <div class="mt-4 overflow-hidden rounded-xl border border-line">
+                            <p class="bg-surface-alt px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Dernek hesapları</p>
+                            <div class="divide-y divide-line">
+                                @foreach ($bankAccounts as $account)
+                                    <div class="px-4 py-2.5">
+                                        <p class="text-sm font-medium text-ink">{{ $account['bank'] }}</p>
+                                        <x-iban :value="$account['iban']" />
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    <form method="POST" :action="'{{ url('panel/aidatlarim') }}/' + odenecek?.id + '/havale'"
+                          enctype="multipart/form-data" class="mt-4 space-y-4">
+                        @csrf
+                        <div>
+                            <label class="field-label">Banka dekontu</label>
+                            <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" required
+                                   class="field-input !py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white">
+                            <p class="field-hint">JPG, PNG veya PDF · en fazla 5 MB.</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="button" @click="odenecek = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="submit" class="btn-accent flex-1">Dekontu Gönder</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </template>
+    </div>
 </x-layouts.customer>

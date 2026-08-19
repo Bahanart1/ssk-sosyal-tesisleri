@@ -24,10 +24,12 @@ class DashboardController extends Controller
             ->sortBy('start_date')
             ->first();
 
+        // Bakiyesini tesiste ödeyecek üyeden bir işlem beklenmiyor; bu liste
+        // yalnızca hâlâ ödeme yapması gerekenleri gösterir.
         $awaitingPayment = $reservations
             ->where('status', 'approved')
-            ->filter(fn ($r) => $r->balanceDue() > 0)
-            ->sortBy('balance_due_date');
+            ->filter(fn ($r) => $r->balanceDue() > 0 && ! $r->collectsOnSite())
+            ->sortBy('start_date');
 
         return view('customer.dashboard', [
             'user' => $user,

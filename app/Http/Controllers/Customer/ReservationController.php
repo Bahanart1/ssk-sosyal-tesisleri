@@ -31,7 +31,7 @@ class ReservationController extends Controller
         $user = Auth::user();
 
         $query = $user->reservations()
-            ->with(['facility', 'roomType', 'period', 'secondPeriod', 'payments']);
+            ->with(['facility', 'roomType', 'period', 'secondPeriod', 'payments', 'refund']);
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -108,9 +108,15 @@ class ReservationController extends Controller
         $data = $request->validated();
 
         $documents = [];
+        $registries = [];
+
         foreach (array_values($request->file('guests', [])) as $index => $files) {
             if (isset($files['document'])) {
                 $documents[$index] = $files['document'];
+            }
+
+            if (isset($files['civil_registry'])) {
+                $registries[$index] = $files['civil_registry'];
             }
         }
 
@@ -120,6 +126,7 @@ class ReservationController extends Controller
                 $data,
                 $documents,
                 $request->file('health_report'),
+                $registries,
             );
         } catch (Throwable $e) {
             return back()->withInput()->withErrors(['period_id' => $e->getMessage()]);
@@ -168,8 +175,7 @@ class ReservationController extends Controller
         $this->authorizeOwner($reservation);
 
         if (! $reservation->isCancellable()) {
-            return back()->with('error', 'Bu başvuru artık iptal edilemez. Devre başlangıcına en az '
-                . (int) Setting::number('cancellation.min_days_before', 10) . ' gün kalmış olmalıdır.');
+            return back()->with('error', 'Devre başladıktan sonra rezervasyon buradan iptal edilemez; Dernek ile iletişime geçin.');
         }
 
         $reservation->update([
@@ -178,12 +184,9 @@ class ReservationController extends Controller
                 . 'Müşteri tarafından iptal edildi: ' . $request->input('reason', '-')),
         ]);
 
-        $refund = $this->refunds->open($reservation, 'cancelled');
 
         return redirect()->route('customer.reservations.show', $reservation)
-            ->with('success', $refund
-                ? 'Başvurunuz iptal edildi. İade için hesap bilgilerinizi bu sayfadan bildirin.'
-                : 'Başvurunuz iptal edildi.');
+            ->with('success', 'Rezervasyonunuz iptal edildi. İade almak istiyorsanız bu sayfadan talep gönderin.');
     }
 
     /**

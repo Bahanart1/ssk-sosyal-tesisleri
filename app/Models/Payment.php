@@ -48,13 +48,21 @@ class Payment extends Model
 
     public function methodLabel(): string
     {
-        return $this->method === 'card' ? 'Kredi/Banka Kartı' : 'Havale / EFT';
+        return match ($this->method) {
+            'card' => 'Kredi/Banka Kartı',
+            'on_site' => 'Tesiste Ödeme',
+            default => 'Havale / EFT',
+        };
     }
 
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'pending' => $this->method === 'bank_transfer' ? 'Dekont İnceleniyor' : 'Ödeme Bekleniyor',
+            'pending' => match ($this->method) {
+                'bank_transfer' => 'Dekont İnceleniyor',
+                'on_site' => 'Tesiste Tahsil Edilecek',
+                default => 'Ödeme Bekleniyor',
+            },
             'success' => 'Onaylandı',
             'failed' => 'Başarısız',
             'refunded' => 'İade Edildi',

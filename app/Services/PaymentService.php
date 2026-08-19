@@ -65,6 +65,22 @@ class PaymentService
     }
 
     /**
+     * Tesiste ödeme beyanı. Para henüz tahsil edilmediği için kayıt "pending"
+     * kalır; giriş sırasında tesis görevlisi tahsil edip yönetici doğrular.
+     */
+    public function recordOnSite(Reservation $reservation, string $kind, float $amount): Payment
+    {
+        return Payment::create([
+            'reservation_id' => $reservation->id,
+            'kind' => $kind,
+            'method' => 'on_site',
+            'amount' => $amount,
+            'status' => 'pending',
+            'reference_no' => Payment::newReference(),
+        ]);
+    }
+
+    /**
      * Bankadan dönen 3D Secure sonucunu işler.
      */
     public function completeCardPayment(Request $request, Payment $payment): GatewayResult

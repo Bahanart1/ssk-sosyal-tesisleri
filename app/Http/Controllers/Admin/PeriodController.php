@@ -91,6 +91,75 @@ class PeriodController extends Controller
      * Devre detayı: yer tahsis edilen ve inceleme bekleyen başvurular ile
      * devrede konaklayacak kişilerin listesi.
      */
+    /**
+     * Devre ayarları: hangi devrenin hangisiyle birleşebileceği ve devre başına
+     * tarife tek ekrandan yönetilir.
+     */
+    public function settings(Request $request)
+    {
+        $facilities = Facility::ordered()->get();
+        $facility = $facilities->firstWhere('id', (int) $request->get('facility')) ?? $facilities->first();
+
+        $periods = $facility
+            ? Period::where('facility_id', $facility->id)->with('combinesWith')->ordered()->get()
+            : collect();
+
+        return view('admin.periods.settings', [
+            'facilities' => $facilities,
+            'facility' => $facility,
+            'periods' => $periods,
+            'roomTariffs' => $facility ? Tariff::where('facility_id', $facility->id)->where('scope', 'room')->ordered()->get() : collect(),
+            'villaTariffs' => $facility ? Tariff::where('facility_id', $facility->id)->where('scope', 'villa')->ordered()->get() : collect(),
+        ]);
+    }
+
+    /** Devre ayarları ekranındaki satırları topluca kaydeder. */
+    public function saveSettings(Request $request)
+    {
+        $data = $request->validate([
+            'periods' => ['required', 'array'],
+            'periods.*.combines_with_id' => ['nullable', 'integer', 'exists:periods,id'],
+            'periods.*.room_tariff_id' => ['required', 'integer', 'exists:tariffs,id'],
+            'periods.*.villa_tariff_id' => ['nullable', 'integer', 'exists:tariffs,id'],
+            'periods.*.is_open' => ['nullable', 'boolean'],
+            'periods.*.is_discounted' => ['nullable', 'boolean'],
+        ]);
+
+        $periods = Period::whereIn('id', array_keys($data['periods']))->get()->keyBy('id');
+        $hatalar = [];
+
+        foreach ($data['periods'] as $id => $satir) {
+            $period = $periods[$id] ?? null;
+
+            if (! $period) {
+                continue;
+            }
+
+            $es = ! empty($satir['combines_with_id']) ? ($periods[$satir['combines_with_id']] ?? Period::find($satir['combines_with_id'])) : null;
+
+            // Devre kendisiyle ya da başka tesis/yıldaki bir devreyle birleşemez.
+            if ($es && ($es->id === $period->id || $es->facility_id !== $period->facility_id || $es->year !== $period->year)) {
+                $hatalar[] = "{$period->label()} için seçilen devre aynı tesis ve yıl içinde olmalı.";
+
+                continue;
+            }
+
+            $period->update([
+                'combines_with_id' => $es?->id,
+                'room_tariff_id' => $satir['room_tariff_id'],
+                'villa_tariff_id' => $satir['villa_tariff_id'] ?? null,
+                'is_open' => (bool) ($satir['is_open'] ?? false),
+                'is_discounted' => (bool) ($satir['is_discounted'] ?? false),
+            ]);
+        }
+
+        if ($hatalar) {
+            return back()->withErrors(['periods' => $hatalar]);
+        }
+
+        return back()->with('success', 'Devre ayarları kaydedildi.');
+    }
+
     public function show(Period $period)
     {
         $period->load(['facility', 'roomTariff', 'villaTariff']);

@@ -459,17 +459,5 @@ class PricingTest extends TestCase
     // Bakiye vadesi (Madde 8/8)
     // ---------------------------------------------------------------
 
-    public function test_bakiye_vadesi_on_bes_gundur(): void
-    {
-        $due = $this->pricer->balanceDueDate(Carbon::parse('2026-04-01'), Carbon::parse('2026-07-05'));
 
-        $this->assertSame('2026-04-16', $due->toDateString());
-    }
-
-    public function test_bakiye_vadesi_devre_baslangicini_asamaz(): void
-    {
-        $due = $this->pricer->balanceDueDate(Carbon::parse('2026-07-01'), Carbon::parse('2026-07-05'));
-
-        $this->assertSame('2026-07-05', $due->toDateString());
-    }
 }

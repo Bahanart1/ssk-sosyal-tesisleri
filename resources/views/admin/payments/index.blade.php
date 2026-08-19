@@ -58,7 +58,7 @@
                                         {{ $payment->reservation->user->name }}
                                     </a>
                                     <span class="badge-gray !py-0.5 !text-[10px]">{{ $payment->kindLabel() }}</span>
-                                    <x-status-badge :status="$payment->status" />
+                                    <x-status-badge :status="$payment->status" :label="$payment->statusLabel()" />
                                 </div>
                                 <p class="mt-1 text-xs text-ink-muted">
                                     {{ $payment->reservation->code }} · {{ $payment->methodLabel() }}

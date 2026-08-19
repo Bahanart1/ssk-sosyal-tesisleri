@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PeriodController;
 use App\Http\Controllers\Admin\ReservationController as AdminReservationController;
+use App\Http\Controllers\Admin\OnSiteCollectionController;
+use App\Http\Controllers\Admin\PetitionController as AdminPetitionController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SettingController;
@@ -17,6 +19,8 @@ use App\Http\Controllers\Customer\DashboardController as CustomerDashboardContro
 use App\Http\Controllers\Customer\DuesController as CustomerDuesController;
 use App\Http\Controllers\Customer\PaymentController as CustomerPaymentController;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
+use App\Http\Controllers\Customer\ForcedPasswordController as CustomerPasswordController;
+use App\Http\Controllers\Customer\PetitionController as CustomerPetitionController;
 use App\Http\Controllers\Customer\RefundController as CustomerRefundController;
 use App\Http\Controllers\Customer\ReservationController as CustomerReservationController;
 use App\Http\Controllers\DocumentController;
@@ -68,6 +72,9 @@ Route::middleware('auth')->prefix('belge')->name('documents.')->group(function (
     Route::get('/kimlik/{guest}', [DocumentController::class, 'identity'])->name('identity');
     Route::get('/dekont/{payment}', [DocumentController::class, 'receipt'])->name('receipt');
     Route::get('/rapor/{reservation}', [DocumentController::class, 'healthReport'])->name('health-report');
+    Route::get('/nufus-kayit/{guest}', [DocumentController::class, 'civilRegistry'])->name('civil-registry');
+    Route::get('/dilekce/{petition}', [DocumentController::class, 'petition'])->name('petition');
+    Route::get('/aidat-dekont/{due}', [DocumentController::class, 'duesReceipt'])->name('dues-receipt');
 });
 
 /*
@@ -75,7 +82,11 @@ Route::middleware('auth')->prefix('belge')->name('documents.')->group(function (
 | Üye paneli
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:customer'])->prefix('panel')->name('customer.')->group(function () {
+Route::middleware(['auth', 'role:customer', 'password.changed'])->prefix('panel')->name('customer.')->group(function () {
+    // Zorunlu şifre değişikliği: middleware bu iki rotayı muaf tutar.
+    Route::get('/sifre-belirle', [CustomerPasswordController::class, 'show'])->name('password.force');
+    Route::post('/sifre-belirle', [CustomerPasswordController::class, 'update'])->name('password.force.update');
+
     Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/aidatlarim', [CustomerDuesController::class, 'index'])->name('dues.index');
@@ -90,11 +101,31 @@ Route::middleware(['auth', 'role:customer'])->prefix('panel')->name('customer.')
     Route::post('/basvuru', [CustomerReservationController::class, 'store'])->name('reservations.store');
     Route::get('/basvuru/{reservation}', [CustomerReservationController::class, 'show'])->name('reservations.show');
     Route::post('/basvuru/{reservation}/iptal', [CustomerReservationController::class, 'cancel'])->name('reservations.cancel');
+    Route::post('/basvuru/{reservation}/iade-talebi', [CustomerRefundController::class, 'request'])->name('refunds.request');
     Route::put('/iade/{refund}', [CustomerRefundController::class, 'update'])->name('refunds.update');
+    Route::get('/dilekcelerim', [CustomerPetitionController::class, 'index'])->name('petitions.index');
+    Route::view('/kvkk', 'legal.kvkk')->name('kvkk');
+    Route::post('/aidatlarim/{due}/havale', [CustomerDuesController::class, 'payTransfer'])->name('dues.pay-transfer');
+    Route::post('/dilekcelerim', [CustomerPetitionController::class, 'store'])->name('petitions.store');
 
     Route::get('/basvuru/{reservation}/odeme', [CustomerPaymentController::class, 'show'])->name('payment.show');
     Route::post('/basvuru/{reservation}/odeme/kart', [CustomerPaymentController::class, 'card'])->name('payment.card');
+    Route::post('/basvuru/{reservation}/odeme/tesiste', [CustomerPaymentController::class, 'onSite'])->name('payment.on-site');
     Route::post('/basvuru/{reservation}/odeme/havale', [CustomerPaymentController::class, 'transfer'])->name('payment.transfer');
+
+    /*
+     * Yukarıdakiler yalnızca form gönderimiyle çalışan eylemlerdir. Üye geri/yenile
+     * yaptığında ya da adresi doğrudan açtığında "405" hata sayfası görmesin diye
+     * aynı adresler GET ile ödeme ekranına döndürülür.
+     */
+    Route::get('/basvuru/{reservation}/odeme/{eylem}', fn ($reservation) => redirect()
+        ->route('customer.payment.show', $reservation))
+        ->whereIn('eylem', ['kart', 'tesiste', 'havale'])
+        ->name('payment.redirect');
+
+    Route::get('/basvuru/{reservation}/iade-talebi', fn ($reservation) => redirect()
+        ->route('customer.reservations.show', $reservation))
+        ->name('refunds.request.redirect');
 });
 
 /*
@@ -114,6 +145,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Başvurular
         Route::get('/basvurular', [AdminReservationController::class, 'index'])->name('reservations.index');
+        Route::get('/basvuru-olustur', [AdminReservationController::class, 'create'])->name('reservations.create');
+        Route::post('/basvuru-olustur', [AdminReservationController::class, 'store'])->name('reservations.store');
         Route::get('/basvurular/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show');
         Route::get('/basvurular/{reservation}/duzenle', [AdminReservationController::class, 'edit'])->name('reservations.edit');
         Route::put('/basvurular/{reservation}', [AdminReservationController::class, 'update'])->name('reservations.update');
@@ -130,6 +163,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Devreler
         Route::get('/devreler', [PeriodController::class, 'index'])->name('periods.index');
         Route::post('/devreler', [PeriodController::class, 'store'])->name('periods.store');
+        Route::get('/devre-ayarlari', [PeriodController::class, 'settings'])->name('periods.settings');
+        Route::put('/devre-ayarlari', [PeriodController::class, 'saveSettings'])->name('periods.settings.save');
         Route::get('/devreler/{period}', [PeriodController::class, 'show'])->name('periods.show');
         Route::put('/devreler/{period}', [PeriodController::class, 'update'])->name('periods.update');
         Route::post('/devreler/{period}/durum', [PeriodController::class, 'toggle'])->name('periods.toggle');
@@ -147,8 +182,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update');
 
         // Oda envanteri
+        Route::get('/tesiste-tahsilat', [OnSiteCollectionController::class, 'index'])->name('on-site.index');
+        Route::post('/tesiste-tahsilat/{reservation}', [OnSiteCollectionController::class, 'collect'])->name('on-site.collect');
         Route::get('/iadeler', [AdminRefundController::class, 'index'])->name('refunds.index');
         Route::post('/iadeler/{refund}/ode', [AdminRefundController::class, 'pay'])->name('refunds.pay');
+        Route::get('/dilekceler', [AdminPetitionController::class, 'index'])->name('petitions.index');
+        Route::post('/dilekceler/{petition}/yanit', [AdminPetitionController::class, 'reply'])->name('petitions.reply');
 
         Route::get('/odalar', [RoomController::class, 'index'])->name('rooms.index');
         Route::put('/odalar/{room}', [RoomController::class, 'update'])->name('rooms.update');

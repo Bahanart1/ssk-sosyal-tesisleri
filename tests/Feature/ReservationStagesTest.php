@@ -185,6 +185,48 @@ class ReservationStagesTest extends TestCase
             ->assertDontSee($digerDevre->code);
     }
 
+    public function test_basvuru_en_yuksek_gruba_gore_siniflanir(): void
+    {
+        $I = \App\Models\CustomerGroup::where('code', 'I')->firstOrFail();
+        $II = \App\Models\CustomerGroup::where('code', 'II')->firstOrFail();
+        $III = \App\Models\CustomerGroup::where('code', 'III')->firstOrFail();
+
+        // Karışık gruplu başvuru: I. Grup en üsttür
+        $karisik = $this->makeReservation();
+        $karisik->guests()->update(['customer_group_id' => $III->id]);
+        $karisik->guests()->create([
+            'full_name' => 'Üye Kendisi', 'tc_no' => '11111111111', 'birth_date' => '1980-01-01',
+            'relation' => 'self', 'customer_group_id' => $I->id, 'age_category' => 'adult', 'sort_order' => 1,
+        ]);
+
+        // Yalnız II. ve III. gruptan oluşan başvuru
+        $ikinci = $this->makeReservation();
+        $ikinci->guests()->update(['customer_group_id' => $II->id]);
+
+        app(\App\Services\ReservationService::class)->applyBreakdown(
+            $karisik->fresh(), app(\App\Services\ReservationService::class)->repriceExisting($karisik->fresh())
+        );
+        app(\App\Services\ReservationService::class)->applyBreakdown(
+            $ikinci->fresh(), app(\App\Services\ReservationService::class)->repriceExisting($ikinci->fresh())
+        );
+
+        $this->assertSame($I->id, $karisik->fresh()->top_customer_group_id, 'I. Grup varsa başvuru I. Gruptur');
+        $this->assertSame($II->id, $ikinci->fresh()->top_customer_group_id);
+
+        // Süzgeç
+        $this->actingAs($this->admin)
+            ->get(route('admin.reservations.index', ['group' => $I->id]))
+            ->assertOk()
+            ->assertSee($karisik->code)
+            ->assertDontSee($ikinci->code);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.reservations.index', ['group' => $II->id]))
+            ->assertOk()
+            ->assertSee($ikinci->code)
+            ->assertDontSee($karisik->code);
+    }
+
     private function makeReservation(): Reservation
     {
         $user = User::create([

@@ -5,9 +5,32 @@
             <p class="section-label">Yönetim</p>
             <h1 class="page-title mt-1">İadeler</h1>
             <p class="page-subtitle">
-                Yer tahsis edilemeyen başvuruların peşinatı kesintisiz iade edilir; üye iptallerinde
-                kırtasiye ve hizmet bedeli düşülür.
+                @if ($tur === 'fazla')
+                    Kişi değişikliği sonrası oluşan fazla ödemeler. İade taraflar arasında yapılır;
+                    yapıldığında "Ödendi" olarak işaretleyin.
+                @else
+                    Reddedilen başvuruların peşinatı buraya kendiliğinden düşer ve kesintisiz iade edilir;
+                    üye iptallerinde kırtasiye ve hizmet bedeli düşülür.
+                @endif
             </p>
+        </div>
+
+        {{-- Tür sekmeleri --}}
+        <div class="mb-5 flex flex-wrap gap-2">
+            <a href="{{ route('admin.refunds.index', ['tur' => 'pesinat']) }}"
+               class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all {{ $tur === 'pesinat' ? 'bg-accent-600 text-white' : 'bg-surface text-ink ring-1 ring-line hover:bg-surface-alt' }}">
+                Peşinatlar
+                @if ($turCounts['pesinat'] > 0)
+                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $tur === 'pesinat' ? 'bg-white/15' : 'bg-surface-sunken' }}">{{ $turCounts['pesinat'] }}</span>
+                @endif
+            </a>
+            <a href="{{ route('admin.refunds.index', ['tur' => 'fazla']) }}"
+               class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all {{ $tur === 'fazla' ? 'bg-accent-600 text-white' : 'bg-surface text-ink ring-1 ring-line hover:bg-surface-alt' }}">
+                Fazla ödemeler
+                @if ($turCounts['fazla'] > 0)
+                    <span class="rounded-md px-1.5 py-0.5 text-[10px] {{ $tur === 'fazla' ? 'bg-white/15' : 'bg-surface-sunken' }}">{{ $turCounts['fazla'] }}</span>
+                @endif
+            </a>
         </div>
 
         {{-- Durum sekmeleri --}}
@@ -18,7 +41,7 @@
                         $aktif = $status === $key;
                         $satir = $counts[$key] ?? null;
                     @endphp
-                    <a href="{{ route('admin.refunds.index', ['status' => $key]) }}"
+                    <a href="{{ route('admin.refunds.index', ['status' => $key, 'tur' => $tur]) }}"
                        class="flex flex-col gap-0.5 px-4 py-3 transition-colors {{ $aktif ? 'bg-accent-50 dark:bg-accent-900/25' : 'bg-surface hover:bg-surface-alt' }}">
                         <span class="text-lg font-semibold tabular-nums text-ink">{{ (int) ($satir->adet ?? 0) }}</span>
                         <span class="text-[11px] font-medium {{ $aktif ? 'text-accent-700 dark:text-accent-300' : 'text-ink-muted' }}">{{ $label }}</span>
@@ -38,6 +61,7 @@
 
         <form method="GET" class="surface mb-6 p-4">
             <input type="hidden" name="status" value="{{ $status }}">
+            <input type="hidden" name="tur" value="{{ $tur }}">
             <div class="flex flex-wrap items-end gap-3">
                 <div class="min-w-[16rem] flex-1">
                     <label for="f-q" class="field-label">Ara</label>

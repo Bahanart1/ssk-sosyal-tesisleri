@@ -188,7 +188,7 @@
                                 </div>
                                 <div class="flex shrink-0 items-center gap-3">
                                     <x-money :value="$reservation->total_price" class="hidden text-sm font-semibold tabular-nums text-ink sm:block" />
-                                    <x-status-badge :status="$reservation->status" />
+                                    <x-status-badge :status="$reservation->status" :label="$reservation->collectsOnSite() ? 'Tesiste Ödeyecek' : null" />
                                 </div>
                             </a>
                         </li>

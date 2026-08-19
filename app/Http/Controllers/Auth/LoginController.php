@@ -40,6 +40,14 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
+        // Kütükten gelen başlangıç şifresi TC'nin kendisi. TC'siyle giriş
+        // yapan üye, şifresini değiştirene kadar panele alınmaz.
+        if (hash_equals($credentials['tc_no'], $credentials['password'])) {
+            Auth::user()->forceFill(['must_change_password' => true])->save();
+
+            return redirect()->route('customer.password.force');
+        }
+
         return redirect()->intended(route('customer.dashboard'));
     }
 

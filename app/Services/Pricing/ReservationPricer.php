@@ -322,14 +322,4 @@ class ReservationPricer
         });
     }
 
-    /**
-     * Bakiye son ödeme tarihi: tahsis bildiriminden itibaren 15 gün; devre başlangıcına
-     * bundan az süre kaldıysa devre başlangıcı (Madde 8/8).
-     */
-    public function balanceDueDate(CarbonInterface $decidedAt, CarbonInterface $periodStart): CarbonInterface
-    {
-        $due = $decidedAt->copy()->startOfDay()->addDays((int) Setting::number('balance.due_days', 15));
-
-        return $due->greaterThan($periodStart) ? $periodStart->copy()->startOfDay() : $due;
-    }
 }
