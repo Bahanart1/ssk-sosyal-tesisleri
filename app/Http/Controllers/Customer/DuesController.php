@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\MembershipDue;
 use App\Models\Setting;
 use App\Services\DocumentStorage;
 use Illuminate\Http\Request;
@@ -36,9 +37,9 @@ class DuesController extends Controller
     }
 
     /** Üye borçlu yıl için havale yapar ve dekontunu yükler; onay yönetimde. */
-    public function payTransfer(Request $request, \App\Models\MembershipDue $due)
+    public function payTransfer(Request $request, MembershipDue $due)
     {
-        abort_unless($due->user_id === Auth::id(), 403);
+        $this->authorize('act', $due);
 
         if ($due->status !== 'unpaid') {
             return back()->with('error', 'Bu yılın aidatı için bekleyen bir ödeme zaten var ya da aidat ödenmiş.');

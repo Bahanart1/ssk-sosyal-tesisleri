@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateMembershipDueRequest;
 use App\Models\CustomerGroup;
 use App\Models\MembershipDue;
 use App\Models\Setting;
@@ -126,24 +127,9 @@ class DuesController extends Controller
         return back()->with('success', "{$data['year']} yılı aidat kaydı oluşturuldu.");
     }
 
-    public function update(Request $request, MembershipDue $due)
+    public function update(UpdateMembershipDueRequest $request, MembershipDue $due)
     {
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['unpaid', 'paid', 'waived'])],
-            'paid_at' => ['nullable', 'date', 'required_if:status,paid'],
-            'method' => ['nullable', Rule::in(array_keys(MembershipDue::METHODS)), 'required_if:status,paid'],
-            'receipt_no' => ['nullable', 'string', 'max:60'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ], [
-            'paid_at.required_if' => 'Ödendi olarak işaretlemek için ödeme tarihi gerekir.',
-            'method.required_if' => 'Ödendi olarak işaretlemek için ödeme yöntemi gerekir.',
-        ], [
-            'amount' => 'tutar',
-            'paid_at' => 'ödeme tarihi',
-            'method' => 'ödeme yöntemi',
-            'receipt_no' => 'makbuz no',
-        ]);
+        $data = $request->validated();
 
         // Borçlu veya muaf duruma dönüldüğünde tahsilat bilgileri temizlenir
         if ($data['status'] !== 'paid') {
@@ -178,7 +164,7 @@ class DuesController extends Controller
         $mesaj = "{$due->user->name} · {$due->year} aidatı tahsil edildi olarak işaretlendi.";
 
         if ($faiz > 0) {
-            $mesaj .= ' Gecikme faizi: ' . number_format($faiz, 2, ',', '.') . ' ₺.';
+            $mesaj .= ' Gecikme faizi: '.number_format($faiz, 2, ',', '.').' ₺.';
         }
 
         return back()->with('success', $mesaj);

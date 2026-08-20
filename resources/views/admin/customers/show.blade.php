@@ -2,7 +2,7 @@
 
     @php $hasDebt = $customer->hasDuesDebt(); @endphp
 
-    <div x-data="{ editOpen: {{ $errors->edit->any() ? 'true' : 'false' }}, duesOpen: false, editingDue: null }"
+    <div x-data="{ editOpen: {{ $errors->edit->any() ? 'true' : 'false' }}, duesOpen: false, editingDue: {} }"
          class="mx-auto max-w-5xl">
 
         <a href="{{ route('admin.customers.index') }}" class="back-link">
@@ -376,8 +376,8 @@
 
         {{-- Aidat kaydı düzenleme --}}
         <template x-teleport="body">
-            <div x-show="editingDue" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
-                <div class="modal-scrim" @click="editingDue = null"></div>
+            <div x-show="editingDue.id" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
+                <div class="modal-scrim" @click="editingDue = {}"></div>
                 <div class="modal-panel" x-transition>
                     <h3 class="font-display text-lg font-semibold text-ink">
                         <span x-text="editingDue?.year"></span> yılı aidatı
@@ -427,7 +427,7 @@
                         </div>
 
                         <div class="flex gap-3 pt-1">
-                            <button type="button" @click="editingDue = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="button" @click="editingDue = {}" class="btn-secondary flex-1">Vazgeç</button>
                             <button type="submit" class="btn-primary flex-1">Kaydet</button>
                         </div>
                     </form>

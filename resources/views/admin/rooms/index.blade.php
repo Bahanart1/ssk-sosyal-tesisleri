@@ -1,6 +1,6 @@
 <x-layouts.admin title="Oda Envanteri">
 
-    <div x-data="{ editing: null }">
+    <div x-data="{ editing: {} }">
         <div class="mb-6">
             <p class="section-label">Yönetim</p>
             <h1 class="page-title mt-1">Oda envanteri</h1>
@@ -233,8 +233,8 @@
 
         {{-- Oda düzenleme modalı --}}
         <template x-teleport="body">
-            <div x-show="editing" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
-                <div class="modal-scrim" @click="editing = null"></div>
+            <div x-show="editing.id" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
+                <div class="modal-scrim" @click="editing = {}"></div>
                 <div class="modal-panel" x-transition>
                     <h3 class="mb-4 font-display text-lg font-semibold text-ink" x-text="editing?.label"></h3>
                     <form method="POST" :action="'{{ url('admin/odalar') }}/' + editing?.id" class="space-y-4">
@@ -261,7 +261,7 @@
                         </label>
                         <p class="text-[11px] text-ink-subtle">Pasife alınan oda, oda tipinin adedinden düşülür.</p>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" @click="editing = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="button" @click="editing = {}" class="btn-secondary flex-1">Vazgeç</button>
                             <button type="submit" class="btn-primary flex-1">Kaydet</button>
                         </div>
                     </form>

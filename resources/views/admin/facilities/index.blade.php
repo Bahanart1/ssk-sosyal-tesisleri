@@ -1,6 +1,6 @@
 <x-layouts.admin title="Tesis & Odalar">
 
-    <div x-data="{ editingRoom: null, newRoomFor: null, editingFacility: null }">
+    <div x-data="{ editingRoom: {}, newRoomFor: null, editingFacility: {} }">
         <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
                 <p class="section-label">Yönetim</p>
@@ -117,8 +117,8 @@
 
         {{-- Tesis düzenleme modalı --}}
         <template x-teleport="body">
-            <div x-show="editingFacility" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
-                <div class="modal-scrim" @click="editingFacility = null"></div>
+            <div x-show="editingFacility.id" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
+                <div class="modal-scrim" @click="editingFacility = {}"></div>
                 <div class="modal-panel" x-transition>
                     <h3 class="mb-4 font-display text-lg font-semibold text-ink">Tesisi düzenle</h3>
                     <form method="POST" :action="'{{ url('admin/tesisler') }}/' + editingFacility?.id" class="space-y-4">
@@ -142,7 +142,7 @@
                             Aktif
                         </label>
                         <div class="flex gap-3 pt-2">
-                            <button type="button" @click="editingFacility = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="button" @click="editingFacility = {}" class="btn-secondary flex-1">Vazgeç</button>
                             <button type="submit" class="btn-primary flex-1">Kaydet</button>
                         </div>
                     </form>
@@ -152,8 +152,8 @@
 
         {{-- Oda tipi düzenleme modalı --}}
         <template x-teleport="body">
-            <div x-show="editingRoom" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
-                <div class="modal-scrim" @click="editingRoom = null"></div>
+            <div x-show="editingRoom.id" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
+                <div class="modal-scrim" @click="editingRoom = {}"></div>
                 <div class="modal-panel" x-transition>
                     <h3 class="mb-4 font-display text-lg font-semibold text-ink">Oda tipini düzenle</h3>
                     <form method="POST" :action="'{{ url('admin/oda-tipleri') }}/' + editingRoom?.id" class="space-y-4">
@@ -161,7 +161,7 @@
                         @method('PUT')
                         @include('admin.facilities._room-type-fields', ['model' => 'editingRoom'])
                         <div class="flex gap-3 pt-2">
-                            <button type="button" @click="editingRoom = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="button" @click="editingRoom = {}" class="btn-secondary flex-1">Vazgeç</button>
                             <button type="submit" class="btn-primary flex-1">Kaydet</button>
                         </div>
                     </form>

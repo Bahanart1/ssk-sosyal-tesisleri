@@ -180,10 +180,9 @@ class ReservationController extends Controller
 
         $reservation->update([
             'status' => 'cancelled',
-            'admin_note' => trim(($reservation->admin_note ? $reservation->admin_note . "\n" : '')
-                . 'Müşteri tarafından iptal edildi: ' . $request->input('reason', '-')),
+            'admin_note' => trim(($reservation->admin_note ? $reservation->admin_note."\n" : '')
+                .'Müşteri tarafından iptal edildi: '.$request->input('reason', '-')),
         ]);
-
 
         return redirect()->route('customer.reservations.show', $reservation)
             ->with('success', 'Rezervasyonunuz iptal edildi. İade almak istiyorsanız bu sayfadan talep gönderin.');
@@ -238,7 +237,7 @@ class ReservationController extends Controller
                         'is_discounted' => $p->is_discounted,
                         'note' => $p->note,
                         'combinable_with' => $partner?->id,
-                        'combinable_label' => $partner ? $partner->label() . ' · ' . $partner->dateRange() : null,
+                        'combinable_label' => $partner ? $partner->label().' · '.$partner->dateRange() : null,
                     ];
                 })->values(),
             ];
@@ -247,6 +246,6 @@ class ReservationController extends Controller
 
     private function authorizeOwner(Reservation $reservation): void
     {
-        abort_unless($reservation->user_id === Auth::id(), 403);
+        $this->authorize('act', $reservation);
     }
 }

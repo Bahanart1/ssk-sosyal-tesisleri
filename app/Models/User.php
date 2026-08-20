@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
         'name', 'email', 'membership_no', 'tc_no', 'phone', 'birth_date', 'password', 'must_change_password', 'password_changed_at',
@@ -66,6 +67,12 @@ class User extends Authenticatable
         return $this->hasMany(MembershipDue::class)->orderByDesc('year');
     }
 
+    /**
+     * Hesap türü: panel ayrımını bu belirler (role sütunu).
+     *
+     * Yöneticinin panelde *ne yapabileceği* Spatie rolleri ve yetkileriyle
+     * belirlenir; bu iki katman bilinçli olarak ayrıdır.
+     */
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -142,7 +149,7 @@ class User extends Authenticatable
             return '-';
         }
 
-        return substr($this->tc_no, 0, 3) . str_repeat('*', 5) . substr($this->tc_no, -3);
+        return substr($this->tc_no, 0, 3).str_repeat('*', 5).substr($this->tc_no, -3);
     }
 
     public function scopeCustomers($query)

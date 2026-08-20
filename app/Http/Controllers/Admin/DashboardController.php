@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\RoomType;
 use App\Models\User;
+use App\Support\ReservationStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -18,8 +19,6 @@ use Illuminate\Support\Str;
 class DashboardController extends Controller
 {
     /** Yer tahsisi sürecinde sayılan başvuru durumları. */
-    private const LIVE_STATUSES = ['pending', 'approved', 'paid'];
-
     public function index()
     {
         return view('admin.dashboard', [
@@ -69,7 +68,7 @@ class DashboardController extends Controller
             'total' => (float) $payments->sum('amount'),
             'last30' => $last30,
             'delta' => $change === null ? null : [
-                'text' => '%' . number_format(abs($change), 0, ',', '.'),
+                'text' => '%'.number_format(abs($change), 0, ',', '.'),
                 'positive' => $change >= 0,
                 'period' => 'önceki 30 güne göre',
             ],
@@ -124,7 +123,7 @@ class DashboardController extends Controller
             $points[] = [
                 'label' => $month->translatedFormat('M'),
                 'value' => $total,
-                'display' => '₺' . number_format($total, 0, ',', '.'),
+                'display' => '₺'.number_format($total, 0, ',', '.'),
             ];
         }
 
@@ -162,7 +161,7 @@ class DashboardController extends Controller
     private function occupancy(): Collection
     {
         $bookings = Reservation::query()
-            ->whereIn('status', self::LIVE_STATUSES)
+            ->whereIn('status', ReservationStatus::OCCUPYING)
             ->get(['period_id', 'second_period_id'])
             ->flatMap(fn ($r) => array_filter([$r->period_id, $r->second_period_id]))
             ->countBy();
@@ -182,8 +181,8 @@ class DashboardController extends Controller
                     return [
                         'label' => (string) $period->number,
                         'value' => $count,
-                        'display' => $count . ' başvuru' . ($capacity > 0 ? ' · %' . round(($count / $capacity) * 100) . ' doluluk' : ''),
-                        'meta' => $period->number . '. Devre · ' . $period->start_date->translatedFormat('d M') . ' – ' . $period->end_date->translatedFormat('d M'),
+                        'display' => $count.' başvuru'.($capacity > 0 ? ' · %'.round(($count / $capacity) * 100).' doluluk' : ''),
+                        'meta' => $period->number.'. Devre · '.$period->start_date->translatedFormat('d M').' – '.$period->end_date->translatedFormat('d M'),
                         'href' => route('admin.periods.show', $period),
                     ];
                 })->all(),
@@ -200,7 +199,7 @@ class DashboardController extends Controller
     private function groupMix(): array
     {
         $counts = ReservationGuest::query()
-            ->whereHas('reservation', fn ($q) => $q->whereIn('status', self::LIVE_STATUSES))
+            ->whereHas('reservation', fn ($q) => $q->whereIn('status', ReservationStatus::OCCUPYING))
             ->selectRaw('customer_group_id, count(*) as total')
             ->groupBy('customer_group_id')
             ->pluck('total', 'customer_group_id');
@@ -210,7 +209,7 @@ class DashboardController extends Controller
         return CustomerGroup::ordered()->get()->map(fn (CustomerGroup $group) => [
             'label' => $group->name,
             'value' => (int) ($counts[$group->id] ?? 0),
-            'display' => (int) ($counts[$group->id] ?? 0) . ' kişi',
+            'display' => (int) ($counts[$group->id] ?? 0).' kişi',
             'meta' => $group->description,
         ])->all();
     }
@@ -219,7 +218,7 @@ class DashboardController extends Controller
     private function roomMix(): array
     {
         $counts = Reservation::query()
-            ->whereIn('status', self::LIVE_STATUSES)
+            ->whereIn('status', ReservationStatus::OCCUPYING)
             ->selectRaw('room_type_id, count(*) as total')
             ->groupBy('room_type_id')
             ->pluck('total', 'room_type_id');
@@ -236,11 +235,11 @@ class DashboardController extends Controller
 
                 return [
                     'label' => $duplicates->contains($roomType->name)
-                        ? $roomType->name . ' · ' . Str::before($roomType->facility->name, ' ')
+                        ? $roomType->name.' · '.Str::before($roomType->facility->name, ' ')
                         : $roomType->name,
                     'value' => $value,
                     'display' => (string) $value,
-                    'meta' => $roomType->facility->name . ' · %' . round(($value / $total) * 100) . ' pay',
+                    'meta' => $roomType->facility->name.' · %'.round(($value / $total) * 100).' pay',
                 ];
             })
             ->sortByDesc('value')

@@ -7,8 +7,8 @@ use App\Models\Refund;
 use App\Models\Reservation;
 use App\Rules\Iban;
 use App\Services\RefundService;
+use App\Support\ReservationStatus;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Üyenin iade hesabını bildirmesi. IBAN yalnızca iade gerektiğinde istenir;
@@ -24,8 +24,8 @@ class RefundController extends Controller
      */
     public function request(Reservation $reservation)
     {
-        abort_unless($reservation->user_id === Auth::id(), 403);
-        abort_unless(in_array($reservation->status, ['rejected', 'cancelled'], true), 422);
+        $this->authorize('act', $reservation);
+        abort_unless(in_array($reservation->status, ReservationStatus::CLOSED, true), 422);
 
         $reason = $reservation->status === 'rejected' ? 'rejected' : 'cancelled';
         $refund = $this->refunds->open($reservation, $reason);
@@ -39,7 +39,7 @@ class RefundController extends Controller
 
     public function update(Request $request, Refund $refund)
     {
-        abort_unless($refund->user_id === Auth::id(), 403);
+        $this->authorize('act', $refund);
         abort_if($refund->isPaid(), 422, 'Bu iade zaten ödendi.');
 
         $data = $request->validate([

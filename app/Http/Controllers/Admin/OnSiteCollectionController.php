@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Facility;
-use App\Models\Payment;
 use App\Models\Period;
 use App\Models\Reservation;
 use App\Services\PaymentService;
+use App\Support\ReservationStatus;
 use App\Support\SearchText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,12 +30,12 @@ class OnSiteCollectionController extends Controller
         $query = Reservation::query()
             ->with(['user', 'facility', 'roomType', 'room', 'secondRoom', 'period', 'secondPeriod'])
             ->whereNotNull('collect_on_site_at')
-            ->where('status', '!=', 'cancelled');
+            ->where('status', '!=', ReservationStatus::CANCELLED);
 
         // Tahsil edilmemiş = hâlâ bakiyesi olan kayıtlar.
         $tahsilEdildi
-            ? $query->where('status', 'paid')
-            : $query->where('status', 'approved');
+            ? $query->where('status', ReservationStatus::PAID)
+            : $query->where('status', ReservationStatus::APPROVED);
 
         if ($facility = $request->get('tesis')) {
             $query->where('facility_id', $facility);
@@ -104,8 +104,8 @@ class OnSiteCollectionController extends Controller
 
         if ($data['note'] ?? null) {
             $reservation->update([
-                'admin_note' => trim(($reservation->admin_note ? $reservation->admin_note . "\n" : '')
-                    . 'Tesiste tahsilat: ' . $data['note']),
+                'admin_note' => trim(($reservation->admin_note ? $reservation->admin_note."\n" : '')
+                    .'Tesiste tahsilat: '.$data['note']),
             ]);
         }
 

@@ -8,7 +8,6 @@ use App\Models\Setting;
 use App\Services\DocumentStorage;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
@@ -34,7 +33,7 @@ class PaymentController extends Controller
         $this->authorizePayable($reservation);
 
         $data = $request->validate([
-            'installment' => ['required', 'integer', 'in:' . implode(',', config('payment.installments', [1]))],
+            'installment' => ['required', 'integer', 'in:'.implode(',', config('payment.installments', [1]))],
         ]);
 
         $balance = $reservation->balanceDue();
@@ -108,7 +107,7 @@ class PaymentController extends Controller
 
     private function authorizePayable(Reservation $reservation): void
     {
-        abort_unless($reservation->user_id === Auth::id(), 403);
+        $this->authorize('act', $reservation);
         abort_unless($reservation->status === 'approved', 404);
     }
 }

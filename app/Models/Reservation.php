@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
+use App\Observers\ReservationObserver;
+use App\Support\ReservationStatus;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy(ReservationObserver::class)]
 class Reservation extends Model
 {
     use HasFactory;
@@ -141,7 +145,7 @@ class Reservation extends Model
     /** Bakiyesi tesiste tahsil edilecek, kesinleşmiş rezervasyon. */
     public function collectsOnSite(): bool
     {
-        return $this->collect_on_site_at !== null && $this->status !== 'cancelled';
+        return $this->collect_on_site_at !== null && $this->status !== ReservationStatus::CANCELLED;
     }
 
     /** Tesiste tahsil edilecek tutar. */
@@ -185,7 +189,7 @@ class Reservation extends Model
      */
     public function isCancellable(): bool
     {
-        if (! in_array($this->status, ['pending', 'approved'], true)) {
+        if (! in_array($this->status, [ReservationStatus::PENDING, ReservationStatus::APPROVED], true)) {
             return false;
         }
 
@@ -203,15 +207,20 @@ class Reservation extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'pending' => 'İnceleniyor',
-            'approved' => $this->collect_on_site_at
+            ReservationStatus::PENDING => 'İnceleniyor',
+            ReservationStatus::APPROVED => $this->collect_on_site_at
                 ? 'Tesiste Ödeyecek'
                 : 'Yer Tahsis Edildi · Ödeme Bekleniyor',
-            'paid' => 'Ödendi',
-            'rejected' => 'Reddedildi',
-            'cancelled' => 'İptal Edildi',
+            ReservationStatus::PAID => 'Ödendi',
+            ReservationStatus::REJECTED => 'Reddedildi',
+            ReservationStatus::CANCELLED => 'İptal Edildi',
             default => $this->status,
         };
+    }
+
+    public function occupancies()
+    {
+        return $this->hasMany(RoomPeriodOccupancy::class);
     }
 
     public function scopeOwnedBy($query, User $user)

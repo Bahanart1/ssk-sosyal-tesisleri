@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\PetitionController as AdminPetitionController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
@@ -144,70 +145,76 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // Başvurular
-        Route::get('/basvurular', [AdminReservationController::class, 'index'])->name('reservations.index');
-        Route::get('/basvuru-olustur', [AdminReservationController::class, 'create'])->name('reservations.create');
-        Route::post('/basvuru-olustur', [AdminReservationController::class, 'store'])->name('reservations.store');
-        Route::get('/basvurular/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show');
-        Route::get('/basvurular/{reservation}/duzenle', [AdminReservationController::class, 'edit'])->name('reservations.edit');
-        Route::put('/basvurular/{reservation}', [AdminReservationController::class, 'update'])->name('reservations.update');
-        Route::post('/basvurular/{reservation}/oda', [AdminReservationController::class, 'assignRoom'])->name('reservations.assign-room');
-        Route::post('/basvurular/{reservation}/onayla', [AdminReservationController::class, 'approve'])->name('reservations.approve');
-        Route::post('/basvurular/{reservation}/reddet', [AdminReservationController::class, 'reject'])->name('reservations.reject');
-        Route::post('/basvurular/{reservation}/iptal', [AdminReservationController::class, 'cancel'])->name('reservations.cancel');
+        Route::get('/basvurular', [AdminReservationController::class, 'index'])->name('reservations.index')->middleware('can:'.App\Support\Permissions::BASVURU_GOR);
+        Route::get('/basvuru-olustur', [AdminReservationController::class, 'create'])->name('reservations.create')->middleware('can:'.App\Support\Permissions::BASVURU_DUZENLE);
+        Route::post('/basvuru-olustur', [AdminReservationController::class, 'store'])->name('reservations.store')->middleware('can:'.App\Support\Permissions::BASVURU_DUZENLE);
+        Route::get('/basvurular/{reservation}', [AdminReservationController::class, 'show'])->name('reservations.show')->middleware('can:'.App\Support\Permissions::BASVURU_GOR);
+        Route::get('/basvurular/{reservation}/duzenle', [AdminReservationController::class, 'edit'])->name('reservations.edit')->middleware('can:'.App\Support\Permissions::BASVURU_DUZENLE);
+        Route::put('/basvurular/{reservation}', [AdminReservationController::class, 'update'])->name('reservations.update')->middleware('can:'.App\Support\Permissions::BASVURU_DUZENLE);
+        Route::post('/basvurular/{reservation}/oda', [AdminReservationController::class, 'assignRoom'])->name('reservations.assign-room')->middleware('can:'.App\Support\Permissions::ODA_ATA);
+        Route::post('/basvurular/{reservation}/onayla', [AdminReservationController::class, 'approve'])->name('reservations.approve')->middleware('can:'.App\Support\Permissions::BASVURU_KARAR);
+        Route::post('/basvurular/{reservation}/reddet', [AdminReservationController::class, 'reject'])->name('reservations.reject')->middleware('can:'.App\Support\Permissions::BASVURU_KARAR);
+        Route::post('/basvurular/{reservation}/iptal', [AdminReservationController::class, 'cancel'])->name('reservations.cancel')->middleware('can:'.App\Support\Permissions::BASVURU_IPTAL);
 
         // Ödemeler
-        Route::get('/odemeler', [AdminPaymentController::class, 'index'])->name('payments.index');
-        Route::post('/odemeler/{payment}/dogrula', [AdminPaymentController::class, 'verify'])->name('payments.verify');
-        Route::post('/odemeler/{payment}/reddet', [AdminPaymentController::class, 'reject'])->name('payments.reject');
+        Route::get('/odemeler', [AdminPaymentController::class, 'index'])->name('payments.index')->middleware('can:'.App\Support\Permissions::ODEME_GOR);
+        Route::post('/odemeler/{payment}/dogrula', [AdminPaymentController::class, 'verify'])->name('payments.verify')->middleware('can:'.App\Support\Permissions::DEKONT_DOGRULA);
+        Route::post('/odemeler/{payment}/reddet', [AdminPaymentController::class, 'reject'])->name('payments.reject')->middleware('can:'.App\Support\Permissions::DEKONT_DOGRULA);
 
         // Devreler
-        Route::get('/devreler', [PeriodController::class, 'index'])->name('periods.index');
-        Route::post('/devreler', [PeriodController::class, 'store'])->name('periods.store');
-        Route::get('/devre-ayarlari', [PeriodController::class, 'settings'])->name('periods.settings');
-        Route::put('/devre-ayarlari', [PeriodController::class, 'saveSettings'])->name('periods.settings.save');
-        Route::get('/devreler/{period}', [PeriodController::class, 'show'])->name('periods.show');
-        Route::put('/devreler/{period}', [PeriodController::class, 'update'])->name('periods.update');
-        Route::post('/devreler/{period}/durum', [PeriodController::class, 'toggle'])->name('periods.toggle');
+        Route::get('/devreler', [PeriodController::class, 'index'])->name('periods.index')->middleware('can:'.App\Support\Permissions::BASVURU_GOR);
+        Route::post('/devreler', [PeriodController::class, 'store'])->name('periods.store')->middleware('can:'.App\Support\Permissions::DEVRE_YONET);
+        Route::get('/devre-ayarlari', [PeriodController::class, 'settings'])->name('periods.settings')->middleware('can:'.App\Support\Permissions::DEVRE_YONET);
+        Route::put('/devre-ayarlari', [PeriodController::class, 'saveSettings'])->name('periods.settings.save')->middleware('can:'.App\Support\Permissions::DEVRE_YONET);
+        Route::get('/devreler/{period}', [PeriodController::class, 'show'])->name('periods.show')->middleware('can:'.App\Support\Permissions::BASVURU_GOR);
+        Route::put('/devreler/{period}', [PeriodController::class, 'update'])->name('periods.update')->middleware('can:'.App\Support\Permissions::DEVRE_YONET);
+        Route::post('/devreler/{period}/durum', [PeriodController::class, 'toggle'])->name('periods.toggle')->middleware('can:'.App\Support\Permissions::DEVRE_YONET);
 
         // Tarifeler
-        Route::get('/tarifeler', [TariffController::class, 'index'])->name('tariffs.index');
-        Route::post('/tarifeler', [TariffController::class, 'store'])->name('tariffs.store');
-        Route::put('/tarifeler/{tariff}', [TariffController::class, 'update'])->name('tariffs.update');
+        Route::get('/tarifeler', [TariffController::class, 'index'])->name('tariffs.index')->middleware('can:'.App\Support\Permissions::TARIFE_YONET);
+        Route::post('/tarifeler', [TariffController::class, 'store'])->name('tariffs.store')->middleware('can:'.App\Support\Permissions::TARIFE_YONET);
+        Route::put('/tarifeler/{tariff}', [TariffController::class, 'update'])->name('tariffs.update')->middleware('can:'.App\Support\Permissions::TARIFE_YONET);
 
         // Tesisler ve oda tipleri
-        Route::get('/tesisler', [FacilityController::class, 'index'])->name('facilities.index');
-        Route::post('/tesisler', [FacilityController::class, 'store'])->name('facilities.store');
-        Route::put('/tesisler/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
-        Route::post('/tesisler/{facility}/oda-tipleri', [FacilityController::class, 'storeRoomType'])->name('room-types.store');
-        Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update');
+        Route::get('/tesisler', [FacilityController::class, 'index'])->name('facilities.index')->middleware('can:'.App\Support\Permissions::TESIS_YONET);
+        Route::post('/tesisler', [FacilityController::class, 'store'])->name('facilities.store')->middleware('can:'.App\Support\Permissions::TESIS_YONET);
+        Route::put('/tesisler/{facility}', [FacilityController::class, 'update'])->name('facilities.update')->middleware('can:'.App\Support\Permissions::TESIS_YONET);
+        Route::post('/tesisler/{facility}/oda-tipleri', [FacilityController::class, 'storeRoomType'])->name('room-types.store')->middleware('can:'.App\Support\Permissions::TESIS_YONET);
+        Route::put('/oda-tipleri/{roomType}', [FacilityController::class, 'updateRoomType'])->name('room-types.update')->middleware('can:'.App\Support\Permissions::TESIS_YONET);
 
         // Oda envanteri
-        Route::get('/tesiste-tahsilat', [OnSiteCollectionController::class, 'index'])->name('on-site.index');
-        Route::post('/tesiste-tahsilat/{reservation}', [OnSiteCollectionController::class, 'collect'])->name('on-site.collect');
-        Route::get('/iadeler', [AdminRefundController::class, 'index'])->name('refunds.index');
-        Route::post('/iadeler/{refund}/ode', [AdminRefundController::class, 'pay'])->name('refunds.pay');
-        Route::get('/dilekceler', [AdminPetitionController::class, 'index'])->name('petitions.index');
-        Route::post('/dilekceler/{petition}/yanit', [AdminPetitionController::class, 'reply'])->name('petitions.reply');
+        Route::get('/tesiste-tahsilat', [OnSiteCollectionController::class, 'index'])->name('on-site.index')->middleware('can:'.App\Support\Permissions::TESISTE_TAHSILAT);
+        Route::post('/tesiste-tahsilat/{reservation}', [OnSiteCollectionController::class, 'collect'])->name('on-site.collect')->middleware('can:'.App\Support\Permissions::TESISTE_TAHSILAT);
+        Route::get('/iadeler', [AdminRefundController::class, 'index'])->name('refunds.index')->middleware('can:'.App\Support\Permissions::IADE_GOR);
+        Route::post('/iadeler/{refund}/ode', [AdminRefundController::class, 'pay'])->name('refunds.pay')->middleware('can:'.App\Support\Permissions::IADE_ODE);
+        Route::get('/dilekceler', [AdminPetitionController::class, 'index'])->name('petitions.index')->middleware('can:'.App\Support\Permissions::DILEKCE_GOR);
+        Route::post('/dilekceler/{petition}/yanit', [AdminPetitionController::class, 'reply'])->name('petitions.reply')->middleware('can:'.App\Support\Permissions::DILEKCE_YANITLA);
 
-        Route::get('/odalar', [RoomController::class, 'index'])->name('rooms.index');
-        Route::put('/odalar/{room}', [RoomController::class, 'update'])->name('rooms.update');
+        Route::get('/odalar', [RoomController::class, 'index'])->name('rooms.index')->middleware('can:'.App\Support\Permissions::ODA_ENVANTERI);
+        Route::put('/odalar/{room}', [RoomController::class, 'update'])->name('rooms.update')->middleware('can:'.App\Support\Permissions::ODA_ENVANTERI);
 
         // Üyeler
-        Route::get('/uyeler', [CustomerController::class, 'index'])->name('customers.index');
-        Route::post('/uyeler', [CustomerController::class, 'store'])->name('customers.store');
-        Route::get('/uyeler/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-        Route::put('/uyeler/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::get('/uyeler', [CustomerController::class, 'index'])->name('customers.index')->middleware('can:'.App\Support\Permissions::UYE_GOR);
+        Route::post('/uyeler', [CustomerController::class, 'store'])->name('customers.store')->middleware('can:'.App\Support\Permissions::UYE_DUZENLE);
+        Route::get('/uyeler/{customer}', [CustomerController::class, 'show'])->name('customers.show')->middleware('can:'.App\Support\Permissions::UYE_GOR);
+        Route::put('/uyeler/{customer}', [CustomerController::class, 'update'])->name('customers.update')->middleware('can:'.App\Support\Permissions::UYE_DUZENLE);
 
         // Aidatlar
-        Route::get('/aidatlar', [DuesController::class, 'index'])->name('dues.index');
-        Route::post('/aidatlar/tahakkuk', [DuesController::class, 'accrue'])->name('dues.accrue');
-        Route::post('/uyeler/{customer}/aidat', [DuesController::class, 'store'])->name('dues.store');
-        Route::put('/aidatlar/{due}', [DuesController::class, 'update'])->name('dues.update');
-        Route::post('/aidatlar/{due}/tahsil', [DuesController::class, 'markPaid'])->name('dues.paid');
-        Route::delete('/aidatlar/{due}', [DuesController::class, 'destroy'])->name('dues.destroy');
+        Route::get('/aidatlar', [DuesController::class, 'index'])->name('dues.index')->middleware('can:'.App\Support\Permissions::AIDAT_GOR);
+        Route::post('/aidatlar/tahakkuk', [DuesController::class, 'accrue'])->name('dues.accrue')->middleware('can:'.App\Support\Permissions::AIDAT_TAHAKKUK);
+        Route::post('/uyeler/{customer}/aidat', [DuesController::class, 'store'])->name('dues.store')->middleware('can:'.App\Support\Permissions::AIDAT_DUZENLE);
+        Route::put('/aidatlar/{due}', [DuesController::class, 'update'])->name('dues.update')->middleware('can:'.App\Support\Permissions::AIDAT_DUZENLE);
+        Route::post('/aidatlar/{due}/tahsil', [DuesController::class, 'markPaid'])->name('dues.paid')->middleware('can:'.App\Support\Permissions::AIDAT_TAHSIL);
+        Route::delete('/aidatlar/{due}', [DuesController::class, 'destroy'])->name('dues.destroy')->middleware('can:'.App\Support\Permissions::AIDAT_SIL);
+
+        // Yönetici hesapları ve yetkiler
+        Route::get('/yoneticiler', [StaffController::class, 'index'])->name('staff.index')->middleware('can:'.App\Support\Permissions::KULLANICI_YONET);
+        Route::post('/yoneticiler', [StaffController::class, 'store'])->name('staff.store')->middleware('can:'.App\Support\Permissions::KULLANICI_YONET);
+        Route::put('/yoneticiler/{staff}', [StaffController::class, 'update'])->name('staff.update')->middleware('can:'.App\Support\Permissions::KULLANICI_YONET);
+        Route::put('/yonetici-yetkileri', [StaffController::class, 'updatePermissions'])->name('staff.permissions')->middleware('can:'.App\Support\Permissions::KULLANICI_YONET);
 
         // Parametreler
-        Route::get('/parametreler', [SettingController::class, 'index'])->name('settings.index');
-        Route::put('/parametreler', [SettingController::class, 'update'])->name('settings.update');
+        Route::get('/parametreler', [SettingController::class, 'index'])->name('settings.index')->middleware('can:'.App\Support\Permissions::PARAMETRE_YONET);
+        Route::put('/parametreler', [SettingController::class, 'update'])->name('settings.update')->middleware('can:'.App\Support\Permissions::PARAMETRE_YONET);
     });
 });

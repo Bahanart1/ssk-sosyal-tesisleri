@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ReservationStatus;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -35,40 +36,39 @@ class Room extends Model
         return $this->hasMany(Reservation::class);
     }
 
+    public function occupancies()
+    {
+        return $this->hasMany(RoomPeriodOccupancy::class);
+    }
+
     /** Bu odayı ikinci oda olarak kullanan başvurular. */
     public function secondaryReservations()
     {
         return $this->hasMany(Reservation::class, 'second_room_id');
     }
 
-    /** Odayı fiilen işgal eden başvuru durumları. */
-    public const OCCUPYING_STATUSES = ['pending', 'approved', 'paid'];
+    /** @deprecated ReservationStatus::OCCUPYING kullanın; geriye dönük uyum için duruyor. */
+    public const OCCUPYING_STATUSES = ReservationStatus::OCCUPYING;
 
     /**
      * Verilen devrelerde başka bir başvuruya atanmamış odalar.
      *
-     * Bir oda yalnızca başvurunun devresi boyunca doludur; aynı oda başka bir
-     * devrede başkasına verilebilir. Birleşik devre başvuruları her iki devreyi
-     * de işgal eder.
+     * Doluluk room_period_occupancies tablosundan okunur; orada bir satır varsa
+     * oda o devrede doludur. Birleşik devre ve ikinci oda halleri satırlara
+     * zaten yansıdığı için burada ayrıca ele alınmaz.
      *
      * @param  list<int>  $periodIds
-     * @param  int|null  $exceptReservationId  Düzenlenen başvurunun kendi odası hariç tutulmaz
+     * @param  int|null  $exceptReservationId  Düzenlenen başvurunun kendi odası hariç tutulur
      */
     public function scopeFreeForPeriods($query, array $periodIds, ?int $exceptReservationId = null)
     {
-        $isgal = function ($q) use ($periodIds, $exceptReservationId) {
-            $q->whereIn('status', self::OCCUPYING_STATUSES)
-                ->where(fn ($w) => $w->whereIn('period_id', $periodIds)->orWhereIn('second_period_id', $periodIds));
+        return $query->whereDoesntHave('occupancies', function ($q) use ($periodIds, $exceptReservationId) {
+            $q->whereIn('period_id', $periodIds);
 
             if ($exceptReservationId) {
-                $q->where('id', '!=', $exceptReservationId);
+                $q->where('reservation_id', '!=', $exceptReservationId);
             }
-        };
-
-        // Oda hem birinci hem ikinci oda olarak verilmiş olabilir.
-        return $query
-            ->whereDoesntHave('reservations', $isgal)
-            ->whereDoesntHave('secondaryReservations', $isgal);
+        });
     }
 
     /** "MENEKŞE 12" */

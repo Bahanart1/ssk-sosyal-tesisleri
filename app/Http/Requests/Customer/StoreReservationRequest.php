@@ -27,7 +27,7 @@ class StoreReservationRequest extends FormRequest
             'guests.*.full_name' => ['required', 'string', 'max:120'],
             'guests.*.tc_no' => ['required', 'digits:11'],
             'guests.*.birth_date' => ['required', 'date', 'before:today'],
-            'guests.*.relation' => ['required', 'string', 'in:' . implode(',', array_keys(ReservationGuest::RELATIONS))],
+            'guests.*.relation' => ['required', 'string', 'in:'.implode(',', array_keys(ReservationGuest::RELATIONS))],
             'guests.*.customer_group_id' => ['required', 'integer', 'exists:customer_groups,id'],
             'guests.*.wants_meal' => ['nullable', 'boolean'],
             'guests.*.document' => ['required', ...DocumentStorage::RULES],

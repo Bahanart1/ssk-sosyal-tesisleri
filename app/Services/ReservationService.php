@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Period;
 use App\Models\CustomerGroup;
+use App\Models\Period;
 use App\Models\Reservation;
 use App\Models\ReservationGuest;
 use App\Models\RoomType;
@@ -12,6 +12,7 @@ use App\Services\Pricing\GuestInput;
 use App\Services\Pricing\PriceBreakdown;
 use App\Services\Pricing\PricingInput;
 use App\Services\Pricing\ReservationPricer;
+use App\Support\ReservationStatus;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
@@ -89,7 +90,7 @@ class ReservationService
      */
     /**
      * @param  array<int, UploadedFile>  $documents  Kişi sırasına göre kimlik belgeleri
-     * @param  array<int, UploadedFile>  $registries Kişi sırasına göre vukuatlı nüfus kayıtları
+     * @param  array<int, UploadedFile>  $registries  Kişi sırasına göre vukuatlı nüfus kayıtları
      */
     public function create(
         User $user,
@@ -123,7 +124,7 @@ class ReservationService
             ]);
 
             $reservation->update([
-                'code' => now()->year . '-' . str_pad((string) $reservation->id, 6, '0', STR_PAD_LEFT),
+                'code' => now()->year.'-'.str_pad((string) $reservation->id, 6, '0', STR_PAD_LEFT),
             ]);
 
             foreach (array_values($data['guests']) as $index => $guest) {
@@ -217,6 +218,148 @@ class ReservationService
     /**
      * Yer tahsisi: rezervasyonu onaylayıp bakiye ödemesine açar (Madde 6/7, 8/8).
      */
+    /**
+     * Yöneticinin başvuru düzenlemesini tek işlemde uygular: kişi listesini
+     * senkronlar, yüklenen belgeleri saklar, başvuruyu günceller ve ücreti
+     * yeniden hesaplar.
+     *
+     * @param  array<string, mixed>  $data  Doğrulanmış form verisi
+     * @param  array<string, mixed>  $files  guests.<anahtar>.<alan> yüklemeleri
+     */
+    public function updateByAdmin(
+        Reservation $reservation,
+        array $data,
+        RoomType $roomType,
+        Period $period,
+        ?Period $second,
+        array $files = [],
+    ): void {
+        DB::transaction(function () use ($reservation, $data, $roomType, $period, $second, $files) {
+            $this->syncGuests($reservation, $data['guests'], $files);
+
+            $reservation->update([
+                'facility_id' => $roomType->facility_id,
+                'room_type_id' => $roomType->id,
+                'period_id' => $period->id,
+                'second_period_id' => $second?->id,
+                'start_date' => $period->start_date,
+                'end_date' => ($second ?? $period)->end_date,
+                'adjustment_note' => $data['adjustment_note'] ?? null,
+                'admin_note' => $data['admin_note'] ?? null,
+            ]);
+
+            $reservation->refresh()->load('guests');
+
+            $breakdown = $this->repriceExisting($reservation, [
+                'room_type' => $roomType,
+                'period' => $period,
+                'second_period' => $second,
+                'surcharge' => isset($data['surcharge_per_person_day'])
+                    ? (float) $data['surcharge_per_person_day']
+                    : (float) $reservation->surcharge_per_person_day,
+                // Boş bırakılırsa oda kapasitesine göre otomatik hesaplanır.
+                'empty_bed_count' => isset($data['empty_bed_count']) ? (int) $data['empty_bed_count'] : null,
+                'adjustment_amount' => isset($data['adjustment_amount'])
+                    ? (float) $data['adjustment_amount']
+                    : (float) $reservation->adjustment_amount,
+            ]);
+
+            $this->applyBreakdown($reservation, $breakdown);
+        });
+    }
+
+    /**
+     * Formdaki kişi listesini başvuruya uygular.
+     *
+     * Formdaki anahtar mevcut kişinin kimliğidir; "yeni-*" anahtarları
+     * yöneticinin eklediği kişilerdir. Formda gelmeyenler silinir.
+     *
+     * @param  array<string, mixed>  $guests
+     * @param  array<string, mixed>  $files
+     */
+    private function syncGuests(Reservation $reservation, array $guests, array $files): void
+    {
+        $keptIds = [];
+        $order = 0;
+
+        foreach ($guests as $anahtar => $guest) {
+            $nitelikler = [
+                'full_name' => $guest['full_name'],
+                'tc_no' => $guest['tc_no'],
+                'birth_date' => $guest['birth_date'],
+                'relation' => $guest['relation'],
+                'customer_group_id' => $guest['customer_group_id'],
+                'wants_meal' => (bool) ($guest['wants_meal'] ?? false),
+                'sort_order' => $order++,
+            ];
+
+            // Yönetici yüklediyse kimlik ve nüfus kaydı belgeleri de kaydedilir.
+            foreach (['document' => DocumentStorage::IDENTITY, 'civil_registry' => DocumentStorage::CIVIL_REGISTRY] as $alan => $klasor) {
+                $dosya = $files[$anahtar][$alan] ?? null;
+
+                if ($dosya) {
+                    $sutun = $alan === 'document' ? 'id_document_path' : 'civil_registry_path';
+                    $nitelikler[$sutun] = $this->documents->store($dosya, $klasor, $reservation->user_id);
+                }
+            }
+
+            $mevcut = ! empty($guest['id'])
+                ? $reservation->guests()->whereKey((int) $guest['id'])->first()
+                : null;
+
+            if ($mevcut) {
+                $mevcut->update($nitelikler);
+                $keptIds[] = $mevcut->id;
+
+                continue;
+            }
+
+            $keptIds[] = $reservation->guests()->create($nitelikler + [
+                'age_category' => 'adult', // applyBreakdown yeniden hesaplayacak
+            ])->id;
+        }
+
+        $reservation->guests()->whereNotIn('id', $keptIds)->delete();
+    }
+
+    /**
+     * Düzenleme sonrası oluşan tutar farkını sonuçlandırır.
+     *
+     * balanceDue() negatife düşmediği için fark burada ham hesaplanır; daha önce
+     * ödenmiş bir fazla-ödeme iadesi varsa tahsilattan düşülür.
+     *
+     * @return array{durum: 'collect'|'refund'|'none', tutar: float}
+     */
+    public function settleDifference(Reservation $reservation): array
+    {
+        $oncekiIade = ($reservation->refund && $reservation->refund->isPaid())
+            ? (float) $reservation->refund->amount
+            : 0.0;
+
+        $fark = round((float) $reservation->total_price - $reservation->paidTotal() + $oncekiIade, 2);
+
+        if ($fark > 0.009) {
+            // Ödeme yeniden üyeye açılır; tesiste ödeme seçimi varsa sıfırlanır
+            // çünkü üyenin yeni tutarı onaylaması gerekir.
+            $reservation->update([
+                'status' => ReservationStatus::APPROVED,
+                'collect_on_site_at' => null,
+            ]);
+
+            return ['durum' => 'collect', 'tutar' => $fark];
+        }
+
+        if ($fark < -0.009) {
+            // Fazla ödeme iadesi kendiliğinden açılır: üye panelinde
+            // "iade edilecektir" görür, ödeme yapılınca yönetici işaretler.
+            $this->refunds->openOverpayment($reservation, abs($fark));
+
+            return ['durum' => 'refund', 'tutar' => abs($fark)];
+        }
+
+        return ['durum' => 'none', 'tutar' => 0.0];
+    }
+
     public function approve(Reservation $reservation, User $admin, ?string $note = null): Reservation
     {
         $breakdown = $this->repriceExisting($reservation, [

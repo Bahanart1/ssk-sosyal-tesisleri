@@ -1,6 +1,6 @@
 <x-layouts.admin title="Aidatlar">
 
-    <div x-data="{ editing: null, accrueOpen: false }">
+    <div x-data="{ editing: {}, accrueOpen: false }">
 
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -222,8 +222,8 @@
 
         {{-- Kayıt düzenleme --}}
         <template x-teleport="body">
-            <div x-show="editing" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
-                <div class="modal-scrim" @click="editing = null"></div>
+            <div x-show="editing.id" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-8">
+                <div class="modal-scrim" @click="editing = {}"></div>
                 <div class="modal-panel" x-transition>
                     <h3 class="font-display text-lg font-semibold text-ink">Aidat kaydı</h3>
                     <p class="mt-1 text-sm text-ink-muted">
@@ -274,7 +274,7 @@
                         </div>
 
                         <div class="flex gap-3 pt-1">
-                            <button type="button" @click="editing = null" class="btn-secondary flex-1">Vazgeç</button>
+                            <button type="button" @click="editing = {}" class="btn-secondary flex-1">Vazgeç</button>
                             <button type="submit" class="btn-primary flex-1">Kaydet</button>
                         </div>
                     </form>

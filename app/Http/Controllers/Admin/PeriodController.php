@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StorePeriodRequest;
+use App\Http\Requests\Admin\UpdatePeriodRequest;
 use App\Models\Facility;
 use App\Models\Period;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Tariff;
+use App\Support\ReservationStatus;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
@@ -35,7 +39,7 @@ class PeriodController extends Controller
         // her iki devreye de yazılır.
         $ids = $periods->pluck('id');
 
-        $rows = Reservation::whereIn('status', ['pending', 'approved', 'paid'])
+        $rows = Reservation::whereIn('status', ReservationStatus::OCCUPYING)
             ->where(fn ($q) => $q->whereIn('period_id', $ids)->orWhereIn('second_period_id', $ids))
             ->get(['period_id', 'second_period_id', 'status']);
 
@@ -171,9 +175,9 @@ class PeriodController extends Controller
             ->sortBy(fn ($r) => $r->user->name)
             ->values();
 
-        $allocated = $reservations->whereIn('status', ['approved', 'paid']);
-        $pending = $reservations->where('status', 'pending');
-        $closed = $reservations->whereIn('status', ['rejected', 'cancelled']);
+        $allocated = $reservations->whereIn('status', [ReservationStatus::APPROVED, ReservationStatus::PAID]);
+        $pending = $reservations->where('status', ReservationStatus::PENDING);
+        $closed = $reservations->whereIn('status', ReservationStatus::CLOSED);
 
         // Oda tipi bazında tahsis / kapasite
         $roomTypes = RoomType::where('facility_id', $period->facility_id)->active()->ordered()->get()
@@ -199,35 +203,11 @@ class PeriodController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StorePeriodRequest $request)
     {
-        $data = $request->validate([
-            'facility_id' => ['required', 'exists:facilities,id'],
-            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'number' => ['required', 'integer', 'min:1', 'max:60'],
-            'start_date' => ['required', 'date'],
-            'nights' => ['required', 'integer', 'min:1', 'max:30'],
-            'is_discounted' => ['nullable', 'boolean'],
-            'combine_group' => ['nullable', 'integer', 'min:1'],
-            'room_tariff_id' => ['required', 'exists:tariffs,id'],
-            'villa_tariff_id' => ['nullable', 'exists:tariffs,id'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ], [], [
-            'number' => 'devre no',
-            'start_date' => 'başlangıç tarihi',
-            'room_tariff_id' => 'oda tarifesi',
-        ]);
+        $data = $request->validated();
 
-        $exists = Period::where('facility_id', $data['facility_id'])
-            ->where('year', $data['year'])
-            ->where('number', $data['number'])
-            ->exists();
-
-        if ($exists) {
-            return back()->withInput()->withErrors(['number' => 'Bu tesis ve yıl için aynı numaralı devre zaten tanımlı.']);
-        }
-
-        $start = \Carbon\Carbon::parse($data['start_date']);
+        $start = Carbon::parse($data['start_date']);
 
         Period::create($data + [
             'end_date' => $start->copy()->addDays($data['nights']),
@@ -237,23 +217,11 @@ class PeriodController extends Controller
         return back()->with('success', 'Devre eklendi.');
     }
 
-    public function update(Request $request, Period $period)
+    public function update(UpdatePeriodRequest $request, Period $period)
     {
-        $data = $request->validate([
-            'start_date' => ['required', 'date'],
-            'nights' => ['required', 'integer', 'min:1', 'max:30'],
-            'is_discounted' => ['nullable', 'boolean'],
-            'is_open' => ['nullable', 'boolean'],
-            'combine_group' => ['nullable', 'integer', 'min:1'],
-            'room_tariff_id' => ['required', 'exists:tariffs,id'],
-            'villa_tariff_id' => ['nullable', 'exists:tariffs,id'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ], [], [
-            'start_date' => 'başlangıç tarihi',
-            'room_tariff_id' => 'oda tarifesi',
-        ]);
+        $data = $request->validated();
 
-        $start = \Carbon\Carbon::parse($data['start_date']);
+        $start = Carbon::parse($data['start_date']);
 
         $period->update($data + [
             'end_date' => $start->copy()->addDays($data['nights']),
@@ -269,6 +237,6 @@ class PeriodController extends Controller
     {
         $period->update(['is_open' => ! $period->is_open]);
 
-        return back()->with('success', "{$period->label()} " . ($period->is_open ? 'başvuruya açıldı.' : 'başvuruya kapatıldı.'));
+        return back()->with('success', "{$period->label()} ".($period->is_open ? 'başvuruya açıldı.' : 'başvuruya kapatıldı.'));
     }
 }

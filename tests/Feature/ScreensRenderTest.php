@@ -72,6 +72,7 @@ class ScreensRenderTest extends TestCase
             'üyeler' => ['admin.customers.index'],
             'aidatlar' => ['admin.dues.index'],
             'iadeler' => ['admin.refunds.index'],
+            'yöneticiler' => ['admin.staff.index'],
             'parametreler' => ['admin.settings.index'],
         ];
     }

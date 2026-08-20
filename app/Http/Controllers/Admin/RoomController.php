@@ -8,7 +8,10 @@ use App\Models\Period;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Services\RoomInventory;
+use App\Support\ReservationStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -19,6 +22,8 @@ use Illuminate\Validation\Rule;
  */
 class RoomController extends Controller
 {
+    public function __construct(private readonly RoomInventory $inventory) {}
+
     public function index(Request $request)
     {
         $facilities = Facility::ordered()
@@ -92,7 +97,7 @@ class RoomController extends Controller
      * Seçili devrede odaları işgal eden başvurular, oda kimliğine göre eşlenir.
      * Birleşik devre başvuruları ikinci devrelerinde de yer kaplar.
      *
-     * @return \Illuminate\Support\Collection<int, Reservation>
+     * @return Collection<int, Reservation>
      */
     private function occupancyFor(Period $period)
     {
@@ -100,7 +105,7 @@ class RoomController extends Controller
 
         Reservation::with('user')
             ->where(fn ($q) => $q->whereNotNull('room_id')->orWhereNotNull('second_room_id'))
-            ->whereIn('status', Room::OCCUPYING_STATUSES)
+            ->whereIn('status', ReservationStatus::OCCUPYING)
             ->where(fn ($q) => $q->where('period_id', $period->id)->orWhere('second_period_id', $period->id))
             ->get()
             ->each(function (Reservation $r) use ($isgal) {
@@ -129,25 +134,10 @@ class RoomController extends Controller
 
         $room->update($data);
 
-        // Oda tipi adedi fiziksel envanterden türediği için birlikte güncellenir.
-        $this->syncQuantities($room->facility_id);
+        // Adet fiziksel envanterden türer; son odası kalmayan oda tipi
+        // rezervasyona açık kalmasın diye pasife alınır.
+        $this->inventory->sync($room->facility);
 
         return back()->with('success', "{$room->label()} güncellendi.");
-    }
-
-    private function syncQuantities(int $facilityId): void
-    {
-        $counts = Room::where('facility_id', $facilityId)
-            ->where('is_active', true)
-            ->selectRaw('room_type_id, COUNT(*) as total')
-            ->groupBy('room_type_id')
-            ->pluck('total', 'room_type_id');
-
-        RoomType::where('facility_id', $facilityId)
-            ->where('kind', 'room')
-            ->get()
-            ->each(fn (RoomType $type) => $type->update([
-                'quantity' => (int) ($counts[$type->id] ?? 0),
-            ]));
     }
 }

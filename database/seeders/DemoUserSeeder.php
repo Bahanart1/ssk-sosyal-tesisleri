@@ -24,6 +24,9 @@ class DemoUserSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // Panel yetkileri Spatie rolleriyle belirlenir; demo yönetici super admin.
+        $admin->syncRoles([RoleSeeder::SUPER_ADMIN]);
+
         $customers = [
             [
                 'name' => 'Ahmet Yılmaz',

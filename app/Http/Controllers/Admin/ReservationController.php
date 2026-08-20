@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreReservationRequest;
+use App\Http\Requests\Admin\UpdateReservationRequest;
 use App\Models\CustomerGroup;
 use App\Models\Facility;
 use App\Models\Period;
@@ -14,10 +16,14 @@ use App\Models\User;
 use App\Services\DocumentStorage;
 use App\Services\RefundService;
 use App\Services\ReservationService;
+use App\Support\ReservationStatus;
 use App\Support\SearchText;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ReservationController extends Controller
@@ -130,8 +136,8 @@ class ReservationController extends Controller
             'facilities' => Facility::ordered()->get(),
             'periodsByFacility' => $periods->groupBy(fn (Period $p) => $p->facility->name),
             'periodLabel' => fn (Period $p) => $p->label()
-                . ($multipleYears ? ' (' . $p->year . ')' : '')
-                . ' · ' . $p->start_date->translatedFormat('d M') . ' – ' . $p->end_date->translatedFormat('d M'),
+                .($multipleYears ? ' ('.$p->year.')' : '')
+                .' · '.$p->start_date->translatedFormat('d M').' – '.$p->end_date->translatedFormat('d M'),
             'groups' => CustomerGroup::ordered()->get(),
             'stages' => self::STAGES,
             'stage' => $stage,
@@ -161,7 +167,7 @@ class ReservationController extends Controller
      * karşılığı). Ücreti değiştirdikleri için atama listesine karışmazlar;
      * yönetici bunları ancak oda tipini değiştirerek kullanabilir.
      *
-     * @return \Illuminate\Support\Collection<int, RoomType>
+     * @return Collection<int, RoomType>
      */
     private function alternateTypes(Reservation $reservation)
     {
@@ -189,7 +195,7 @@ class ReservationController extends Controller
             'balance' => $query->where('status', 'approved')->whereNull('collect_on_site_at'),
             'room' => $query->where(fn ($q) => $this->kesinlesmis($q))->whereNull('room_id'),
             'done' => $query->where(fn ($q) => $this->kesinlesmis($q))->whereNotNull('room_id'),
-            'closed' => $query->whereIn('status', ['rejected', 'cancelled']),
+            'closed' => $query->whereIn('status', ReservationStatus::CLOSED),
         };
     }
 
@@ -217,7 +223,7 @@ class ReservationController extends Controller
 
         foreach ($rows as $row) {
             $stage = match (true) {
-                in_array($row->status, ['rejected', 'cancelled'], true) => 'closed',
+                in_array($row->status, ReservationStatus::CLOSED, true) => 'closed',
                 $row->status === 'pending' => $row->deposit_status === 'verified' ? 'review' : 'deposit',
                 $row->status === 'approved' => $row->pesin
                     ? 'balance'
@@ -255,37 +261,11 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreReservationRequest $request)
     {
-        $data = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'room_type_id' => ['required', 'integer', 'exists:room_types,id'],
-            'period_id' => ['required', 'integer', 'exists:periods,id'],
-            'second_period_id' => ['nullable', 'integer', 'exists:periods,id', 'different:period_id'],
-            'guests' => ['required', 'array', 'min:1'],
-            'guests.*.full_name' => ['required', 'string', 'max:120'],
-            'guests.*.tc_no' => ['required', 'digits:11'],
-            'guests.*.birth_date' => ['required', 'date', 'before:today'],
-            'guests.*.relation' => ['required', 'string', 'in:' . implode(',', array_keys(ReservationGuest::RELATIONS))],
-            'guests.*.customer_group_id' => ['required', 'integer', 'exists:customer_groups,id'],
-            'note' => ['nullable', 'string', 'max:1000'],
-        ], [], [
-            'user_id' => 'üye',
-            'room_type_id' => 'oda tipi',
-            'period_id' => 'devre',
-            'guests.*.full_name' => 'ad soyad',
-            'guests.*.tc_no' => 'TC kimlik numarası',
-            'guests.*.birth_date' => 'doğum tarihi',
-        ]);
+        $data = $request->validated();
 
         $member = User::customers()->findOrFail($data['user_id']);
-        $roomType = RoomType::findOrFail($data['room_type_id']);
-
-        if (count($data['guests']) > $roomType->capacity()) {
-            return back()->withInput()->withErrors([
-                'guests' => "{$roomType->name} için en fazla {$roomType->capacity()} kişi seçilebilir.",
-            ]);
-        }
 
         try {
             $reservation = $this->reservations->create($member, $data, documents: []);
@@ -339,193 +319,55 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function update(Request $request, Reservation $reservation)
+    public function update(UpdateReservationRequest $request, Reservation $reservation)
     {
-        // Ödemesi tamamlanmış rezervasyonlar da düzenlenebilir: üyeler telefonla
-        // kişi ekletip çıkarttırabiliyor, tutar farkı sonradan tahsil/iade ediliyor.
-        abort_if($reservation->status === 'cancelled', 422);
-
-        $data = $request->validate([
-            'room_type_id' => ['required', 'integer', 'exists:room_types,id'],
-            'period_id' => ['required', 'integer', 'exists:periods,id'],
-            'second_period_id' => ['nullable', 'integer', 'exists:periods,id', 'different:period_id'],
-
-            'guests' => ['required', 'array', 'min:1'],
-            'guests.*.id' => ['nullable', 'integer'],
-            'guests.*.full_name' => ['required', 'string', 'max:120'],
-            'guests.*.tc_no' => ['required', 'digits:11'],
-            'guests.*.birth_date' => ['required', 'date', 'before:today'],
-            'guests.*.relation' => ['required', 'string', 'in:' . implode(',', array_keys(ReservationGuest::RELATIONS))],
-            'guests.*.customer_group_id' => ['required', 'integer', 'exists:customer_groups,id'],
-            'guests.*.wants_meal' => ['nullable', 'boolean'],
-            'guests.*.document' => ['nullable', ...DocumentStorage::RULES],
-            'guests.*.civil_registry' => ['nullable', ...DocumentStorage::RULES],
-
-            // Ücret sistem tarafından hesaplanır; bu alanlar yalnızca istisnai
-            // durumda elle girilir ve boş gelirse mevcut değer korunur.
-            'empty_bed_count' => ['nullable', 'integer', 'min:0', 'max:10'],
-            'surcharge_per_person_day' => ['nullable', 'numeric', 'min:0'],
-            'adjustment_amount' => ['nullable', 'numeric'],
-            'adjustment_note' => ['nullable', 'string', 'max:255'],
-            'admin_note' => ['nullable', 'string', 'max:1000'],
-            'action' => ['required', 'in:save,approve,send_payment'],
-        ], [], [
-            'room_type_id' => 'oda tipi',
-            'period_id' => 'devre',
-            'guests.*.full_name' => 'ad soyad',
-            'guests.*.tc_no' => 'TC kimlik numarası',
-            'guests.*.birth_date' => 'doğum tarihi',
-            'adjustment_amount' => 'düzeltme tutarı',
-        ]);
-
-        $roomType = RoomType::findOrFail($data['room_type_id']);
-        $period = Period::findOrFail($data['period_id']);
-        $second = ! empty($data['second_period_id']) ? Period::findOrFail($data['second_period_id']) : null;
-
-        if ($second && ! $period->canCombineWith($second)) {
-            return back()->withInput()->withErrors([
-                'second_period_id' => 'Yalnızca birleşen devreler listesindeki ardışık iki devre birlikte seçilebilir.',
-            ]);
-        }
-
-        // İkinci oda tahsis edilmişse kapasite iki katına çıkar.
-        $kapasite = $roomType->capacity() * ($reservation->second_room_id ? 2 : 1);
-
-        if (count($data['guests']) > $kapasite) {
-            return back()->withInput()->withErrors([
-                'guests' => $reservation->second_room_id
-                    ? "İki {$roomType->name} için en fazla {$kapasite} kişi seçilebilir."
-                    : "{$roomType->name} için en fazla {$kapasite} kişi seçilebilir. Daha fazlası için önce ikinci oda tahsis edin.",
-            ]);
-        }
+        $data = $request->validated();
 
         try {
-            DB::transaction(function () use ($reservation, $data, $roomType, $period, $second) {
-                // Formdaki anahtar mevcut kişinin kimliğidir; "yeni-*" anahtarları
-                // yöneticinin eklediği kişilerdir. Formda gelmeyenler silinir.
-                $keptIds = [];
-
-                $order = 0;
-
-                foreach ($data['guests'] as $anahtar => $guest) {
-                    $nitelikler = [
-                        'full_name' => $guest['full_name'],
-                        'tc_no' => $guest['tc_no'],
-                        'birth_date' => $guest['birth_date'],
-                        'relation' => $guest['relation'],
-                        'customer_group_id' => $guest['customer_group_id'],
-                        'wants_meal' => (bool) ($guest['wants_meal'] ?? false),
-                        'sort_order' => $order++,
-                    ];
-
-                    // Yönetici yüklediyse kimlik ve nüfus kaydı belgeleri de kaydedilir.
-                    foreach (['document' => 'id_document_path', 'civil_registry' => 'civil_registry_path'] as $alan => $sutun) {
-                        $dosya = request()->file("guests.{$anahtar}.{$alan}");
-
-                        if ($dosya) {
-                            $nitelikler[$sutun] = $this->documents->store(
-                                $dosya,
-                                $alan === 'document' ? DocumentStorage::IDENTITY : DocumentStorage::CIVIL_REGISTRY,
-                                $reservation->user_id,
-                            );
-                        }
-                    }
-
-                    $mevcut = ! empty($guest['id'])
-                        ? $reservation->guests()->whereKey((int) $guest['id'])->first()
-                        : null;
-
-                    if ($mevcut) {
-                        $mevcut->update($nitelikler);
-                        $keptIds[] = $mevcut->id;
-
-                        continue;
-                    }
-
-                    $keptIds[] = $reservation->guests()->create($nitelikler + [
-                        'age_category' => 'adult', // applyBreakdown yeniden hesaplayacak
-                    ])->id;
-                }
-
-                $reservation->guests()->whereNotIn('id', $keptIds)->delete();
-
-                $reservation->update([
-                    'facility_id' => $roomType->facility_id,
-                    'room_type_id' => $roomType->id,
-                    'period_id' => $period->id,
-                    'second_period_id' => $second?->id,
-                    'start_date' => $period->start_date,
-                    'end_date' => ($second ?? $period)->end_date,
-                    'adjustment_note' => $data['adjustment_note'] ?? null,
-                    'admin_note' => $data['admin_note'] ?? null,
-                ]);
-
-                $reservation->refresh()->load('guests');
-
-                $breakdown = $this->reservations->repriceExisting($reservation, [
-                    'room_type' => $roomType,
-                    'period' => $period,
-                    'second_period' => $second,
-                    'surcharge' => isset($data['surcharge_per_person_day'])
-                        ? (float) $data['surcharge_per_person_day']
-                        : (float) $reservation->surcharge_per_person_day,
-                    // Boş bırakılırsa oda kapasitesine göre otomatik hesaplanır.
-                    'empty_bed_count' => isset($data['empty_bed_count']) ? (int) $data['empty_bed_count'] : null,
-                    'adjustment_amount' => isset($data['adjustment_amount'])
-                        ? (float) $data['adjustment_amount']
-                        : (float) $reservation->adjustment_amount,
-                ]);
-
-                $this->reservations->applyBreakdown($reservation, $breakdown);
-            });
+            $this->reservations->updateByAdmin(
+                $reservation,
+                $data,
+                $request->roomType(),
+                $request->period(),
+                $request->secondPeriod(),
+                (array) $request->file('guests', []),
+            );
         } catch (Throwable $e) {
             return back()->withInput()->withErrors(['period_id' => $e->getMessage()]);
         }
 
         $reservation->refresh();
 
-        if (in_array($data['action'], ['approve', 'send_payment'], true)) {
-            // Karar bekleyen başvuru: yer tahsisi yapılır ve ödemeye açılır.
-            if ($reservation->status === 'pending') {
-                $this->reservations->approve($reservation, Auth::user(), $data['admin_note'] ?? null);
-
-                return redirect()->route('admin.reservations.show', $reservation)
-                    ->with('success', 'Yer tahsisi yapıldı. Üyeye ödeme için açıldı.');
-            }
-
-            // Kesinleşmiş rezervasyonda kişi değişikliği fark doğurmuş olabilir.
-            // balanceDue() negatife düşmediği için fark burada ham hesaplanır;
-            // daha önce ödenmiş bir fazla-ödeme iadesi varsa tahsilattan düşülür.
-            $oncekiIade = ($reservation->refund && $reservation->refund->isPaid())
-                ? (float) $reservation->refund->amount
-                : 0.0;
-
-            $fark = round((float) $reservation->total_price - $reservation->paidTotal() + $oncekiIade, 2);
-
-            if ($fark > 0.009) {
-                // Ödeme yeniden üyeye açılır; tesiste ödeme seçimi varsa sıfırlanır
-                // çünkü üyenin yeni tutarı onaylaması gerekir.
-                $reservation->update(['status' => 'approved', 'collect_on_site_at' => null]);
-
-                return redirect()->route('admin.reservations.show', $reservation)
-                    ->with('success', 'Ödeme üyeye gönderildi: ' . number_format($fark, 2, ',', '.') . ' ₺ tahsil edilecek.');
-            }
-
-            if ($fark < -0.009) {
-                // Fazla ödeme iadesi kendiliğinden açılır: üye panelinde
-                // "iade edilecektir" görür, ödeme yapılınca yönetici işaretler.
-                $this->refunds->openOverpayment($reservation, abs($fark));
-
-                return redirect()->route('admin.reservations.show', $reservation)
-                    ->with('success', 'Tutar düştü: ' . number_format(abs($fark), 2, ',', '.') . ' ₺ iade edilecek. Üye panelinde görebilir; iade yapılınca İadeler sayfasından işaretleyin.');
-            }
-
-            return redirect()->route('admin.reservations.show', $reservation)
-                ->with('success', 'Değişiklikler kaydedildi. Tahsil edilecek ya da iade edilecek fark oluşmadı.');
+        if (! in_array($data['action'], ['approve', 'send_payment'], true)) {
+            return redirect()->route('admin.reservations.edit', $reservation)
+                ->with('success', 'Değişiklikler kaydedildi ve tutar yeniden hesaplandı.');
         }
 
-        return redirect()->route('admin.reservations.edit', $reservation)
-            ->with('success', 'Değişiklikler kaydedildi ve tutar yeniden hesaplandı.');
+        // Karar bekleyen başvuru: yer tahsisi yapılır ve ödemeye açılır.
+        if ($reservation->status === ReservationStatus::PENDING) {
+            $this->reservations->approve($reservation, Auth::user(), $data['admin_note'] ?? null);
+
+            return redirect()->route('admin.reservations.show', $reservation)
+                ->with('success', 'Yer tahsisi yapıldı. Üyeye ödeme için açıldı.');
+        }
+
+        // Kesinleşmiş rezervasyonda kişi değişikliği fark doğurmuş olabilir.
+        $sonuc = $this->reservations->settleDifference($reservation);
+
+        return redirect()->route('admin.reservations.show', $reservation)
+            ->with('success', $this->farkMesaji($sonuc));
+    }
+
+    /** @param array{durum: string, tutar: float} $sonuc */
+    private function farkMesaji(array $sonuc): string
+    {
+        $tutar = number_format($sonuc['tutar'], 2, ',', '.');
+
+        return match ($sonuc['durum']) {
+            'collect' => "Ödeme üyeye gönderildi: {$tutar} ₺ tahsil edilecek.",
+            'refund' => "Tutar düştü: {$tutar} ₺ iade edilecek. Üye panelinde görebilir; iade yapılınca İadeler sayfasından işaretleyin.",
+            default => 'Değişiklikler kaydedildi. Tahsil edilecek ya da iade edilecek fark oluşmadı.',
+        };
     }
 
     /**
@@ -534,7 +376,7 @@ class ReservationController extends Controller
      */
     public function assignRoom(Request $request, Reservation $reservation)
     {
-        abort_unless(in_array($reservation->status, Room::OCCUPYING_STATUSES, true), 422);
+        abort_unless(in_array($reservation->status, ReservationStatus::OCCUPYING, true), 422);
 
         $data = $request->validate([
             'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
@@ -548,38 +390,71 @@ class ReservationController extends Controller
         }
 
         $periodIds = array_filter([$reservation->period_id, $reservation->second_period_id]);
-        $secilen = [];
 
-        foreach (['room_id', 'second_room_id'] as $alan) {
-            if (empty($data[$alan])) {
-                continue;
-            }
+        // Uygunluk kontrolü ile yazma tek işlemde yapılır; aksi halde iki yönetici
+        // aynı odayı aynı devrede iki başvuruya tahsis edebilir. lockForUpdate
+        // MySQL/PostgreSQL'de satırı kilitler, SQLite'ta etkisizdir — orada son
+        // güvence, yazma anında devreye giren kısmi unique indekstir.
+        try {
+            $secilen = DB::transaction(function () use ($data, $reservation, $periodIds) {
+                $secilen = [];
 
-            $room = Room::find($data[$alan]);
+                foreach (['room_id', 'second_room_id'] as $alan) {
+                    if (empty($data[$alan])) {
+                        continue;
+                    }
 
-            $uygun = $room
-                && $room->facility_id === $reservation->facility_id
-                && $room->room_type_id === $reservation->room_type_id
-                && $room->is_active
-                && Room::whereKey($room->id)->freeForPeriods($periodIds, $reservation->id)->exists();
+                    $room = Room::whereKey($data[$alan])->lockForUpdate()->first();
 
-            if (! $uygun) {
-                return back()->withErrors([
-                    $alan => 'Seçilen oda bu devrede uygun değil. Oda bu arada başkasına verilmiş olabilir; sayfayı yenileyin.',
+                    $uygun = $room
+                        && $room->facility_id === $reservation->facility_id
+                        && $room->room_type_id === $reservation->room_type_id
+                        && $room->is_active
+                        && Room::whereKey($room->id)->freeForPeriods($periodIds, $reservation->id)->exists();
+
+                    if (! $uygun) {
+                        throw ValidationException::withMessages([
+                            $alan => 'Seçilen oda bu devrede uygun değil. Oda bu arada başkasına verilmiş olabilir; sayfayı yenileyin.',
+                        ]);
+                    }
+
+                    $secilen[$alan] = $room;
+                }
+
+                $reservation->update([
+                    'room_id' => $secilen['room_id']->id,
+                    'second_room_id' => $secilen['second_room_id']->id ?? null,
                 ]);
+
+                return $secilen;
+            });
+        } catch (QueryException $e) {
+            if (! $this->odaCakismasi($e)) {
+                throw $e;
             }
 
-            $secilen[$alan] = $room;
+            throw ValidationException::withMessages([
+                'room_id' => 'Oda bu arada başka bir başvuruya tahsis edildi. Sayfayı yenileyip yeniden deneyin.',
+            ]);
         }
-
-        $reservation->update([
-            'room_id' => $secilen['room_id']->id,
-            'second_room_id' => $secilen['second_room_id']->id ?? null,
-        ]);
 
         $etiket = collect($secilen)->map(fn (Room $r) => $r->label())->join(' + ');
 
         return back()->with('success', "{$etiket} tahsis edildi.");
+    }
+
+    /** Kısmi unique indeksin ürettiği oda/devre çakışması mı? */
+    private function odaCakismasi(QueryException $e): bool
+    {
+        foreach (['room_period_occupancies_room_id_period_id_unique',
+            'reservations_room_period_unique',
+            'reservations_second_room_period_unique'] as $indeks) {
+            if (str_contains($e->getMessage(), $indeks)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function approve(Request $request, Reservation $reservation)
@@ -619,7 +494,6 @@ class ReservationController extends Controller
             'approved_by' => Auth::id(),
         ]);
 
-
         return back()->with('success', $refund
             ? 'Başvuru iptal edildi. İade kaydı açıldı; üyeden IBAN bilgisi istenecek.'
             : 'Başvuru iptal edildi.');
@@ -629,12 +503,12 @@ class ReservationController extends Controller
      * Listedeki her başvuru için atanabilir odalar. Satır başına sorgu atmamak
      * adına tüm odalar ve dolu kayıtlar iki sorguda çekilip bellekte eşlenir.
      *
-     * @param  \Illuminate\Support\Collection<int, Reservation>  $reservations
-     * @return array<int, \Illuminate\Support\Collection<string, \Illuminate\Support\Collection>>
+     * @param  Collection<int, Reservation>  $reservations
+     * @return array<int, Collection<string, Collection>>
      */
     private function roomOptionsFor($reservations): array
     {
-        $atanabilir = $reservations->filter(fn (Reservation $r) => in_array($r->status, Room::OCCUPYING_STATUSES, true));
+        $atanabilir = $reservations->filter(fn (Reservation $r) => in_array($r->status, ReservationStatus::OCCUPYING, true));
 
         if ($atanabilir->isEmpty()) {
             return [];
@@ -654,7 +528,7 @@ class ReservationController extends Controller
         $dolu = [];
 
         Reservation::where(fn ($q) => $q->whereNotNull('room_id')->orWhereNotNull('second_room_id'))
-            ->whereIn('status', Room::OCCUPYING_STATUSES)
+            ->whereIn('status', ReservationStatus::OCCUPYING)
             ->where(fn ($q) => $q->whereIn('period_id', $devreler)->orWhereIn('second_period_id', $devreler))
             ->get(['id', 'room_id', 'second_room_id', 'period_id', 'second_period_id'])
             ->each(function (Reservation $r) use (&$dolu) {
@@ -693,7 +567,7 @@ class ReservationController extends Controller
      * seçilen devre(ler)de başka bir başvuruya verilmemiş olanlar. Başvurunun
      * hâlihazırda atanmış odası listede kalır.
      *
-     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection>
+     * @return Collection<string, Collection>
      */
     private function availableRooms(Reservation $reservation)
     {

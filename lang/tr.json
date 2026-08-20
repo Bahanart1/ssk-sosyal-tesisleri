@@ -4,5 +4,12 @@
     "Showing": "Gösterilen:",
     "to": "–",
     "of": "/ toplam",
-    "results": "kayıt"
+    "results": "kayıt",
+    "This action is unauthorized.": "Bu işlem için yetkiniz bulunmuyor.",
+    "Forbidden": "Erişim yok",
+    "Unauthorized": "Yetkisiz",
+    "Not Found": "Bulunamadı",
+    "Page Expired": "Sayfanın süresi doldu",
+    "Too Many Requests": "Çok fazla istek",
+    "Server Error": "Sunucu hatası"
 }

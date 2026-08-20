@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Facility;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Services\RoomInventory;
 use App\Support\XlsxReader;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +59,11 @@ class ImportRooms extends Command
 
     /** @var array<string, list<string>> */
     private array $issues = [];
+
+    public function __construct(private readonly RoomInventory $inventory)
+    {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -350,31 +356,15 @@ class ImportRooms extends Command
     }
 
     /**
-     * room_types.quantity artık fiziksel envanterden türetiliyor. Hiç odası
-     * kalmayan oda tipleri rezervasyona açık kalmaması için pasife alınır;
-     * villalar bu listede yer almadığından dokunulmaz.
+     * Adetleri fiziksel envanterden yeniden hesaplar. Kural, oda envanteri
+     * ekranıyla ortak olduğu için RoomInventory servisinde tutulur.
      */
     private function syncQuantities(Facility $facility): void
     {
-        $counts = Room::where('facility_id', $facility->id)
-            ->where('is_active', true)
-            ->selectRaw('room_type_id, COUNT(*) as total')
-            ->groupBy('room_type_id')
-            ->pluck('total', 'room_type_id');
+        $pasifeAlinan = $this->inventory->sync($facility, ! $this->option('keep-empty-types'));
 
-        $types = RoomType::where('facility_id', $facility->id)->where('kind', 'room')->get();
-
-        foreach ($types as $type) {
-            $total = (int) ($counts[$type->id] ?? 0);
-
-            $type->quantity = $total;
-
-            if ($total === 0 && ! $this->option('keep-empty-types')) {
-                $type->is_active = false;
-                $this->warn(sprintf('"%s" için envanterde hiç oda yok — oda tipi pasife alındı.', $type->name));
-            }
-
-            $type->save();
+        foreach ($pasifeAlinan as $ad) {
+            $this->warn(sprintf('"%s" için envanterde hiç oda yok — oda tipi pasife alındı.', $ad));
         }
     }
 

@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\CustomerGroup;
+use App\Models\Facility;
 use App\Models\Period;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Models\RoomPeriodOccupancy;
 use App\Models\RoomType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -14,6 +16,7 @@ use Database\Seeders\CustomerGroupSeeder;
 use Database\Seeders\DemoUserSeeder;
 use Database\Seeders\FacilitySeeder;
 use Database\Seeders\SettingSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -27,8 +30,11 @@ class RoomAllocationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private RoomType $roomType;
+
     private Period $on5;
+
     private Period $on6;
 
     protected function setUp(): void
@@ -199,7 +205,7 @@ class RoomAllocationTest extends TestCase
 
     public function test_baska_tesisin_odasi_atanamaz(): void
     {
-        $gure = \App\Models\Facility::where('slug', 'gure')->firstOrFail();
+        $gure = Facility::where('slug', 'gure')->firstOrFail();
         $gureType = RoomType::where('facility_id', $gure->id)->where('kind', 'room')->firstOrFail();
 
         $yabanci = Room::create([
@@ -416,6 +422,119 @@ class RoomAllocationTest extends TestCase
         $this->assertNull($yeni->fresh()->room_id, 'Hatalı istek hiçbir şey kaydetmemeli');
     }
 
+    /**
+     * İki yönetici aynı odayı aynı devrede iki başvuruya tahsis etmeye çalışırsa
+     * ikincisi reddedilmelidir. Uygunluk kontrolü ile yazma arasındaki boşlukta
+     * odanın kapılmış olması bu senaryonun ta kendisidir.
+     */
+    public function test_bayat_sayfadan_gelen_tahsis_reddedilir(): void
+    {
+        $room = $this->makeRoom('B', '210');
+        $ilk = $this->makeReservation($this->on5);
+        $ikinci = $this->makeReservation($this->on5);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $ilk), ['room_id' => $room->id])
+            ->assertSessionHasNoErrors();
+
+        // İkinci yöneticinin ekranı, oda henüz boşken yüklenmişti.
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $ikinci), ['room_id' => $room->id])
+            ->assertSessionHasErrors('room_id');
+
+        $this->assertSame($room->id, $ilk->fresh()->room_id);
+        $this->assertNull($ikinci->fresh()->room_id, 'Oda ikinci başvuruya yazılmamalı');
+    }
+
+    /**
+     * Uygulama katmanı atlansa dahi veritabanı aynı oda/devre çiftini iki kez
+     * kabul etmemelidir; SQLite'ta okuma kilidi olmadığı için asıl güvence budur.
+     */
+    public function test_veritabani_ayni_oda_ve_devreyi_iki_basvuruya_baglamaz(): void
+    {
+        $room = $this->makeRoom('B', '211');
+        $ilk = $this->makeReservation($this->on5);
+        $ikinci = $this->makeReservation($this->on5);
+
+        $ilk->update(['room_id' => $room->id]);
+
+        $this->expectException(QueryException::class);
+
+        $ikinci->update(['room_id' => $room->id]);
+    }
+
+    /** Kısmi indeks yalnızca odayı işgal eden durumları kapsar. */
+    public function test_iptal_edilen_basvuru_odayi_indekste_de_serbest_birakir(): void
+    {
+        $room = $this->makeRoom('B', '212');
+        $ilk = $this->makeReservation($this->on5);
+        $ikinci = $this->makeReservation($this->on5);
+
+        $ilk->update(['room_id' => $room->id]);
+        $ilk->update(['status' => 'cancelled']);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.reservations.assign-room', $ikinci), ['room_id' => $room->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($room->id, $ikinci->fresh()->room_id);
+    }
+
+    /**
+     * Eski kısmi indeksin yakalayamadığı çapraz çakışma: bir başvurunun birinci
+     * odası ile başka bir başvurunun ikinci odası aynı devrede aynı oda olamaz.
+     * Doluluk normalize edildiği için artık veritabanı reddediyor.
+     */
+    public function test_capraz_oda_cakismasi_engellenir(): void
+    {
+        $oda = $this->makeRoom('D', '301');
+        $digerOda = $this->makeRoom('D', '302');
+
+        $ilk = $this->makeReservation($this->on5);
+        $ilk->update(['room_id' => $oda->id]);
+
+        $ikinci = $this->makeReservation($this->on5);
+        $ikinci->update(['room_id' => $digerOda->id]);
+
+        // İkinci başvuru, birincinin odasını "ikinci oda" olarak almaya çalışıyor.
+        $this->expectException(QueryException::class);
+
+        $ikinci->update(['second_room_id' => $oda->id]);
+    }
+
+    /** Doluluk satırları başvurunun durumunu izler. */
+    public function test_doluluk_satirlari_durumu_izler(): void
+    {
+        $oda = $this->makeRoom('D', '303');
+        $reservation = $this->makeReservation($this->on5);
+
+        $reservation->update(['room_id' => $oda->id]);
+        $this->assertSame(1, $reservation->occupancies()->count());
+
+        $reservation->update(['status' => 'cancelled']);
+        $this->assertSame(0, $reservation->occupancies()->count(), 'İptal odayı serbest bırakmalı');
+
+        $reservation->update(['status' => 'approved']);
+        $this->assertSame(1, $reservation->occupancies()->count(), 'Geri alınınca yeniden işgal etmeli');
+
+        $reservation->delete();
+        $this->assertSame(0, RoomPeriodOccupancy::where('room_id', $oda->id)->count());
+    }
+
+    /** Birleşik devre başvurusu her iki devrede de yer kaplar. */
+    public function test_birlesik_devre_iki_satir_uretir(): void
+    {
+        $oda = $this->makeRoom('D', '304');
+        $reservation = $this->makeReservation($this->on5);
+
+        $reservation->update(['room_id' => $oda->id, 'second_period_id' => $this->on6->id]);
+
+        $this->assertEqualsCanonicalizing(
+            [$this->on5->id, $this->on6->id],
+            $reservation->occupancies()->pluck('period_id')->all()
+        );
+    }
+
     private function makeRoom(string $block, string $number): Room
     {
         return Room::create([
@@ -430,7 +549,7 @@ class RoomAllocationTest extends TestCase
     private function makeReservation(Period $period): Reservation
     {
         $user = User::create([
-            'name' => 'Üye ' . (User::count() + 1),
+            'name' => 'Üye '.(User::count() + 1),
             'tc_no' => str_pad((string) (10000000000 + User::count()), 11, '0', STR_PAD_LEFT),
             'password' => Hash::make('sifre123'),
             'role' => 'customer',
@@ -439,7 +558,7 @@ class RoomAllocationTest extends TestCase
         ]);
 
         $reservation = Reservation::create([
-            'code' => '2026-' . str_pad((string) (Reservation::count() + 1), 6, '0', STR_PAD_LEFT),
+            'code' => '2026-'.str_pad((string) (Reservation::count() + 1), 6, '0', STR_PAD_LEFT),
             'user_id' => $user->id,
             'facility_id' => $this->roomType->facility_id,
             'room_type_id' => $this->roomType->id,

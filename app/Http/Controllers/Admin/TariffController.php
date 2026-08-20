@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreTariffRequest;
+use App\Http\Requests\Admin\UpdateTariffRequest;
 use App\Models\CustomerGroup;
 use App\Models\Facility;
 use App\Models\Tariff;
@@ -31,19 +33,9 @@ class TariffController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTariffRequest $request)
     {
-        $data = $request->validate([
-            'facility_id' => ['required', 'exists:facilities,id'],
-            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'name' => ['required', 'string', 'max:160'],
-            'scope' => ['required', 'in:room,villa'],
-            'is_discounted' => ['nullable', 'boolean'],
-            'empty_bed_fee' => ['nullable', 'numeric', 'min:0'],
-        ], [], [
-            'name' => 'tarife adı',
-            'empty_bed_fee' => 'boş yatak ücreti',
-        ]);
+        $data = $request->validated();
 
         $tariff = Tariff::create($data + ['sort_order' => 99]);
 
@@ -59,21 +51,9 @@ class TariffController extends Controller
         return back()->with('success', 'Tarife eklendi. Şimdi grup ücretlerini girebilirsiniz.');
     }
 
-    public function update(Request $request, Tariff $tariff)
+    public function update(UpdateTariffRequest $request, Tariff $tariff)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:160'],
-            'is_discounted' => ['nullable', 'boolean'],
-            'empty_bed_fee' => ['nullable', 'numeric', 'min:0'],
-            'prices' => ['required', 'array'],
-            'prices.*.adult_price' => ['required', 'numeric', 'min:0'],
-            'prices.*.child_price' => ['nullable', 'numeric', 'min:0'],
-            'prices.*.min_daily_total' => ['nullable', 'numeric', 'min:0'],
-        ], [], [
-            'name' => 'tarife adı',
-            'empty_bed_fee' => 'boş yatak ücreti',
-            'prices.*.adult_price' => '12 yaş üstü ücreti',
-        ]);
+        $data = $request->validated();
 
         DB::transaction(function () use ($tariff, $data) {
             $tariff->update([

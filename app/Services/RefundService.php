@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Rules\Iban;
 use Carbon\CarbonInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Peşinat ve ödeme iadeleri.
@@ -106,8 +107,8 @@ class RefundService
         $refund = Refund::firstOrNew(['reservation_id' => $reservation->id]);
 
         $not = $refund->exists && $refund->isPaid()
-            ? trim(($refund->note ? $refund->note . "\n" : '')
-                . 'Önceki iade ödendi: ' . number_format((float) $refund->amount, 2, ',', '.') . ' ₺ (' . $refund->paid_at?->format('d.m.Y') . ')')
+            ? trim(($refund->note ? $refund->note."\n" : '')
+                .'Önceki iade ödendi: '.number_format((float) $refund->amount, 2, ',', '.').' ₺ ('.$refund->paid_at?->format('d.m.Y').')')
             : $refund->note;
 
         $refund->fill([
@@ -143,13 +144,24 @@ class RefundService
     /** Havale yapıldıktan sonra yönetici kaydı kapatır. */
     public function markPaid(Refund $refund, User $admin, ?string $referenceNo = null, ?string $note = null): Refund
     {
-        $refund->update([
-            'status' => 'paid',
-            'reference_no' => $referenceNo,
-            'note' => $note,
-            'paid_at' => now(),
-            'processed_by' => $admin->id,
-        ]);
+        // Koşul, güncellemenin kendi WHERE'inde durur: iki yönetici aynı iadeyi
+        // aynı anda ödendi işaretlerse ikincisi hiçbir satır etkilemez ve
+        // referans numarası üzerine yazılmaz.
+        $etkilenen = Refund::whereKey($refund->getKey())
+            ->where('status', '!=', 'paid')
+            ->update([
+                'status' => 'paid',
+                'reference_no' => $referenceNo,
+                'note' => $note,
+                'paid_at' => now(),
+                'processed_by' => $admin->id,
+            ]);
+
+        if ($etkilenen === 0) {
+            throw ValidationException::withMessages([
+                'reference_no' => 'Bu iade bu arada ödendi olarak işaretlendi.',
+            ]);
+        }
 
         return $refund->fresh();
     }

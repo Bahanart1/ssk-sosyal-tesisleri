@@ -7,10 +7,12 @@ use App\Models\Facility;
 use App\Models\MembershipDue;
 use App\Models\Payment;
 use App\Models\Period;
+use App\Models\Refund;
 use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Models\User;
 use App\Services\DocumentStorage;
+use App\Support\ReservationStatus;
 use Carbon\Carbon;
 use Database\Seeders\Camp2026Seeder;
 use Database\Seeders\CustomerGroupSeeder;
@@ -27,7 +29,9 @@ class ReservationFlowTest extends TestCase
     use RefreshDatabase;
 
     private User $member;
+
     private Period $period;
+
     private RoomType $roomType;
 
     protected function setUp(): void
@@ -105,7 +109,7 @@ class ReservationFlowTest extends TestCase
         $this->assertCount(2, $reservation->guests);
         foreach ($reservation->guests as $kisi) {
             $this->assertNotNull($kisi->civil_registry_path, 'Her kişinin belgesi kaydedilmeli');
-            \Illuminate\Support\Facades\Storage::disk('local')->assertExists($kisi->civil_registry_path);
+            Storage::disk('local')->assertExists($kisi->civil_registry_path);
         }
 
         // Sahibi ve yönetici görebilir
@@ -116,7 +120,7 @@ class ReservationFlowTest extends TestCase
         $admin = User::create([
             'name' => 'Yönetici',
             'email' => 'yonetici@example.test',
-            'password' => \Illuminate\Support\Facades\Hash::make('sifre123'),
+            'password' => Hash::make('sifre123'),
             'role' => 'admin',
             'is_active' => true,
         ]);
@@ -128,7 +132,7 @@ class ReservationFlowTest extends TestCase
         $yabanci = User::create([
             'name' => 'Yabancı Üye',
             'tc_no' => '99988877766',
-            'password' => \Illuminate\Support\Facades\Hash::make('sifre123'),
+            'password' => Hash::make('sifre123'),
             'role' => 'customer',
             'customer_group_id' => $this->groupId('I'),
             'is_active' => true,
@@ -246,7 +250,7 @@ class ReservationFlowTest extends TestCase
         foreach (range(1, 3) as $i) {
             $kisiler[] = [
                 'full_name' => "Kişi {$i}",
-                'tc_no' => '1234567890' . $i,
+                'tc_no' => '1234567890'.$i,
                 'birth_date' => '1990-01-01',
                 'relation' => 'child',
                 'customer_group_id' => $this->groupId('I'),
@@ -323,7 +327,7 @@ class ReservationFlowTest extends TestCase
         foreach ([1, 2] as $i) {
             $payload['guests']["yeni-{$i}"] = [
                 'full_name' => "Ek Kişi {$i}",
-                'tc_no' => '1234567891' . $i,
+                'tc_no' => '1234567891'.$i,
                 'birth_date' => '1990-01-01',
                 'relation' => 'child',
                 'customer_group_id' => $this->groupId('I'),
@@ -549,7 +553,7 @@ class ReservationFlowTest extends TestCase
         $beklenenIade = round($odenen - (float) $reservation->total_price, 2);
 
         // İade kaydı kendiliğinden açıldı
-        $iade = \App\Models\Refund::where('reservation_id', $reservation->id)->firstOrFail();
+        $iade = Refund::where('reservation_id', $reservation->id)->firstOrFail();
         $this->assertSame('overpayment', $iade->reason);
         $this->assertSame('pending', $iade->status);
         $this->assertSame(number_format($beklenenIade, 2, '.', ''), $iade->amount);
@@ -593,7 +597,7 @@ class ReservationFlowTest extends TestCase
         $this->actingAs($admin)->post(route('admin.reservations.reject', $reservation), ['admin_note' => 'Dolu']);
         $this->actingAs($this->member)->post(route('customer.refunds.request', $reservation));
 
-        $iade = \App\Models\Refund::where('reservation_id', $reservation->id)->firstOrFail();
+        $iade = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
         // IBAN bildirilmeden ödendi işaretlenemez
         $this->actingAs($admin)
@@ -632,8 +636,8 @@ class ReservationFlowTest extends TestCase
     {
         return User::create([
             'name' => 'Yönetici',
-            'email' => 'admin-' . uniqid() . '@example.test',
-            'password' => \Illuminate\Support\Facades\Hash::make('sifre123'),
+            'email' => 'admin-'.uniqid().'@example.test',
+            'password' => Hash::make('sifre123'),
             'role' => 'admin',
             'is_active' => true,
         ]);
@@ -1240,5 +1244,17 @@ class ReservationFlowTest extends TestCase
         $this->actingAs($this->member)
             ->get(route('customer.payment.show', $reservation))
             ->assertNotFound();
+    }
+
+    /** İptal edilmiş başvuru düzenlenemez. */
+    public function test_iptal_edilmis_basvuru_duzenlenemez(): void
+    {
+        $reservation = $this->createReservation();
+        $admin = $this->makeAdmin();
+        $reservation->update(['status' => ReservationStatus::CANCELLED]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.reservations.update', $reservation), $this->adminPayload($reservation))
+            ->assertStatus(422);
     }
 }

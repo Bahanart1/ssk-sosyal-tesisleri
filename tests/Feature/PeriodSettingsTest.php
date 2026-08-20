@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Period;
+use App\Models\Tariff;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\Camp2026Seeder;
@@ -111,7 +112,7 @@ class PeriodSettingsTest extends TestCase
     public function test_devre_tarifesi_degistirilebilir(): void
     {
         $period = Period::where('number', 15)->firstOrFail();
-        $baskaTarife = \App\Models\Tariff::where('facility_id', $period->facility_id)
+        $baskaTarife = Tariff::where('facility_id', $period->facility_id)
             ->where('scope', 'room')->where('id', '!=', $period->room_tariff_id)->firstOrFail();
 
         $this->actingAs($this->admin)
@@ -127,5 +128,29 @@ class PeriodSettingsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame($baskaTarife->id, $period->fresh()->room_tariff_id);
+    }
+
+    /**
+     * Aynı tesis ve yıl için aynı numaralı ikinci devre eklenemez.
+     *
+     * Kontrol controller'dan StorePeriodRequest'e taşındı; davranışın korunduğunu
+     * doğrular.
+     */
+    public function test_ayni_numarali_devre_iki_kez_eklenemez(): void
+    {
+        $mevcut = Period::firstOrFail();
+
+        $payload = [
+            'facility_id' => $mevcut->facility_id,
+            'year' => $mevcut->year,
+            'number' => $mevcut->number,
+            'start_date' => '2026-09-01',
+            'nights' => 6,
+            'room_tariff_id' => $mevcut->room_tariff_id,
+        ];
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.periods.store'), $payload)
+            ->assertSessionHasErrors('number');
     }
 }

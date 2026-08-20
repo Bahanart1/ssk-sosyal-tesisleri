@@ -10,6 +10,7 @@ use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\RefundService;
 use Carbon\Carbon;
 use Database\Seeders\Camp2026Seeder;
 use Database\Seeders\CustomerGroupSeeder;
@@ -18,6 +19,7 @@ use Database\Seeders\FacilitySeeder;
 use Database\Seeders\SettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -32,8 +34,11 @@ class RefundTest extends TestCase
     private const IBAN = 'TR33 0006 1005 1978 6457 8413 26';
 
     private User $admin;
+
     private User $member;
+
     private RoomType $roomType;
+
     private Period $period;
 
     protected function setUp(): void
@@ -72,7 +77,7 @@ class RefundTest extends TestCase
     }
 
     /** Karara bağlanan başvuru için üye iade talebi gönderir. */
-    private function talepEt(\App\Models\Reservation $reservation): void
+    private function talepEt(Reservation $reservation): void
     {
         $this->actingAs($this->member)
             ->post(route('customer.refunds.request', $reservation))
@@ -129,7 +134,6 @@ class RefundTest extends TestCase
 
         $this->talepEt($reservation);
 
-
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
         $this->assertSame('rejected', $refund->reason);
@@ -151,7 +155,6 @@ class RefundTest extends TestCase
 
         $this->talepEt($reservation);
 
-
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
         $this->assertSame('cancelled', $refund->reason);
@@ -169,7 +172,6 @@ class RefundTest extends TestCase
             ->post(route('admin.reservations.cancel', $reservation), ['admin_note' => 'İptal']);
 
         $this->talepEt($reservation);
-
 
         $refund = Refund::where('reservation_id', $reservation->id)->firstOrFail();
 
@@ -365,7 +367,7 @@ class RefundTest extends TestCase
     private function makeReservation(float $paid): Reservation
     {
         $reservation = Reservation::create([
-            'code' => '2026-' . str_pad((string) (Reservation::count() + 1), 6, '0', STR_PAD_LEFT),
+            'code' => '2026-'.str_pad((string) (Reservation::count() + 1), 6, '0', STR_PAD_LEFT),
             'user_id' => $this->member->id,
             'facility_id' => $this->roomType->facility_id,
             'room_type_id' => $this->roomType->id,
@@ -403,5 +405,54 @@ class RefundTest extends TestCase
         }
 
         return $reservation->fresh();
+    }
+
+    /**
+     * Eşzamanlı iki "ödendi" işaretlemesinde ikincisi hiçbir satır etkilememeli.
+     *
+     * Controller'daki isPaid() kontrolü sıralı durumu keser; burada iki isteğin
+     * de kontrolü bayat veriyle geçtiği yarış simüle edilir — iki ayrı model
+     * örneği, ikisi de kaydı henüz ödenmemiş biliyor.
+     */
+    public function test_es_zamanli_iade_odemesi_referansi_ezmez(): void
+    {
+        $refund = $this->makeRefund();
+        $refund->update(['iban' => str_replace(' ', '', self::IBAN)]);
+
+        $birinciIstek = Refund::findOrFail($refund->id);
+        $ikinciIstek = Refund::findOrFail($refund->id);
+
+        $service = app(RefundService::class);
+
+        $service->markPaid($birinciIstek, $this->admin, 'ILK-REF');
+
+        $this->assertFalse($ikinciIstek->isPaid(), 'İkinci istek kaydı hâlâ ödenmemiş biliyor.');
+
+        try {
+            $service->markPaid($ikinciIstek, $this->admin, 'IKINCI-REF');
+            $this->fail('İkinci ödeme reddedilmeliydi.');
+        } catch (ValidationException) {
+            // beklenen
+        }
+
+        $this->assertSame('ILK-REF', $refund->fresh()->reference_no, 'Referans üzerine yazılmamalı');
+        $this->assertSame($this->admin->id, $refund->fresh()->processed_by);
+    }
+
+    /** Sıralı ikinci deneme controller katmanında zaten kesilir. */
+    public function test_odenmis_iade_tekrar_odenemez(): void
+    {
+        $refund = $this->makeRefund();
+        $refund->update(['iban' => str_replace(' ', '', self::IBAN)]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.refunds.pay', $refund), ['reference_no' => 'ILK-REF'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.refunds.pay', $refund), ['reference_no' => 'IKINCI-REF'])
+            ->assertStatus(422);
+
+        $this->assertSame('ILK-REF', $refund->fresh()->reference_no);
     }
 }

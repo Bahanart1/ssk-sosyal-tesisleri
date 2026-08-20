@@ -109,6 +109,57 @@ class ImportTest extends TestCase
         $this->assertSame(0, $type->fresh()->quantity);
     }
 
+    /**
+     * Son odası da pasife alınan oda tipi rezervasyona açık kalmamalıdır.
+     *
+     * Adet hesabı daha önce komutta ve ekranda ayrı ayrı yazılmıştı; ekran
+     * yalnızca adedi sıfırlıyor, tipi kapatmıyordu. Müşteri başvuru ekranı oda
+     * tiplerini yalnızca is_active ile süzdüğü için tip, sıfır fiziksel odayla
+     * seçilebilir kalıyordu.
+     */
+    public function test_son_odasi_pasife_alinan_oda_tipi_rezervasyona_kapanir(): void
+    {
+        $this->seed(FacilitySeeder::class);
+
+        $colakli = Facility::where('slug', 'colakli')->sole();
+        $type = RoomType::where('code', 'colakli-4-kisilik')->sole();
+        $type->update(['is_active' => true, 'quantity' => 1]);
+
+        $room = Room::create([
+            'facility_id' => $colakli->id,
+            'room_type_id' => $type->id,
+            'block' => 'KARDELEN',
+            'number' => '9',
+        ]);
+
+        $admin = User::create([
+            'name' => 'Yönetici',
+            'email' => 'envanter@example.test',
+            'password' => 'gizli-sifre',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.rooms.update', $room), [
+                'is_active' => 0,
+                'note' => 'Tadilat',
+                'room_type_id' => $type->id,
+            ])
+            ->assertRedirect();
+
+        $type->refresh();
+
+        $this->assertSame(0, $type->quantity);
+        $this->assertFalse($type->is_active, 'Odası kalmayan oda tipi rezervasyona kapatılmalı');
+
+        // Müşteri başvuru ekranının süzgeci ile de görünmemeli.
+        $this->assertFalse(
+            RoomType::active()->where('id', $type->id)->exists(),
+            'Kapatılan tip müşteri seçeneklerinde çıkmamalı'
+        );
+    }
+
     public function test_uye_listesi_kutuk_alanlariyla_aktarilir(): void
     {
         $this->seed(CustomerGroupSeeder::class);
